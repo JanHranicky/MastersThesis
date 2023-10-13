@@ -5,11 +5,12 @@ class CA(tf.keras.Model):
   '''
   Represents the model of cellular automata
   '''
-  def __init__(self,channel_n=16,cell_reset_prob=0.5):
+  def __init__(self,channel_n=16,cell_reset_prob=0.5,name="CA"):
     super().__init__() #Need to be called to initialize the super tf.keras.Model class in order to use tensorflow utilities
 
     self.cell_reset_prob = cell_reset_prob
     self.channel_n = channel_n
+    self.name = name
     self.rule_model = tf.keras.Sequential([
       tf.keras.layers.Conv2D(filters=128,kernel_size=1,activation='relu'),
       tf.keras.layers.Conv2D(filters=channel_n,kernel_size=1,
