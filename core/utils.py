@@ -97,6 +97,4 @@ def run_model_for_i(ca,w,h,c,steps,grayscale=False,checkpoint_path = None):
     for i in range(steps):
         x = ca(x)
         frames.append(tf2pil(x[0].numpy(),grayscale))
-    for i in range(len(frames)):
-      frames[i].save('./test/'+str(i)+'.jpg')
     return frames
