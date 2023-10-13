@@ -10,11 +10,12 @@ import pathlib
 
 
 class Trainer():
-  def __init__(self,model,loss_f,gt_img,gt_img_name,lr=0.001,epoch_num=30000,visualize=True,visualize_iters=100,save_iters=5000,generate_gif_iters=5000,train_step_interval=(75,100)) -> None:
+  def __init__(self,model,loss_f,gt_img,gt_img_name,grayscale=False,lr=0.001,epoch_num=30000,visualize=True,visualize_iters=100,save_iters=5000,generate_gif_iters=5000,train_step_interval=(75,100)) -> None:
     self.model = model
     self.loss_f = loss_f
     self.gt_img = gt_img
     self.gt_img_name = gt_img_name
+    self.grayscale = grayscale
     self.lr = lr
     self.epoch_num = epoch_num
     self.visualize = visualize
@@ -38,6 +39,11 @@ class Trainer():
       plt.xlabel('Epoch')
       plt.ylabel('Loss value')
       plt.savefig(f'{self.checkpoint_path}/loss_{i}.png')
+      
+  def generate_gif(self,i,w,h):
+    if not self.generate_gif or i%self.generate_gif_iters != 0: return
+    imgs = utils.run_model_for_i(self.model,w,h,self.model.channel_n,self.train_step_interval[1],grayscale=self.grayscale)
+    utils.make_gif(self.checkpoint_path+'/'+str(i),imgs)
     
   @tf.function
   def train_step(self,x,trainer):
@@ -45,7 +51,11 @@ class Trainer():
     with tf.GradientTape() as g:
       for i in tf.range(iter_n):
         x = self.model(x)
-      loss = tf.math.reduce_mean(self.loss_f(self.gt_img, utils.tf2grayscale(x)))
+        if self.grayscale:
+          l_x = utils.tf2grayscale(x)
+        else:
+          l_x = x
+      loss = tf.math.reduce_mean(self.loss_f(self.gt_img, l_x))
     grads = g.gradient(loss, self.model.weights)
     grads = [g/(tf.norm(g)+1e-8) for g in grads]
     trainer.apply_gradients(zip(grads, self.model.weights))
@@ -71,3 +81,4 @@ class Trainer():
       if np.isnan(loss_val):
         break
       self.save_progress(i,loss_values)
+      self.generate_gif(i,width,height)

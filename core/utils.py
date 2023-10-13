@@ -42,10 +42,10 @@ def plot_single_image(img):
   plt.imshow(arr, cmap='gray', vmin=0, vmax=255)
   plt.show()
 
-def tf2pil(t,i,grayscale=False):
+def tf2pil(t,grayscale=False):
   if not grayscale:
     return tf.keras.utils.array_to_img(to_rgb(t))
-  return Image.fromarray(tf2grayscale(t),mode="L")
+  return Image.fromarray(np.uint8(tf2grayscale(t)),mode="L")
 
 def tf2grayscale(b):
   if len(b.shape) == 3: #scatchy way to do it, but tensors will only be either in batch = 4 dims or single = 3 dims
@@ -92,9 +92,11 @@ def run_model_for_i(ca,w,h,c,steps,grayscale=False,checkpoint_path = None):
     
     if checkpoint_path:
         ca.load_weights(checkpoint_path)
-
-    frames = [tf2pil(batch_to_array(x)[0],grayscale)]
+        
+    frames = [tf2pil(x[0].numpy(),grayscale)]
     for i in range(steps):
         x = ca(x)
-        frames.append(tf2pil(batch_to_array(x)[0],i,grayscale))
+        frames.append(tf2pil(x[0].numpy(),grayscale))
+    for i in range(len(frames)):
+      frames[i].save('./test/'+str(i)+'.jpg')
     return frames
