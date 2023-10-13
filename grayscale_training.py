@@ -1,5 +1,4 @@
-import utils
-import model
+from core import model,utils
 import tensorflow as tf
 from PIL import Image,ImageOps
 from IPython.display import clear_output,display
@@ -40,7 +39,7 @@ def train_step(x):
   with tf.GradientTape() as g:
     for i in tf.range(iter_n):
       x = ca(x)
-    loss = tf.math.reduce_mean(loss_f(gt_img, utils.tf2grayscale(x)))
+    loss = tf.math.reduce_mean(loss_f(gt_img, core.tf2grayscale(x)))
   grads = g.gradient(loss, ca.weights)
   grads = [g/(tf.norm(g)+1e-8) for g in grads]
   trainer.apply_gradients(zip(grads, ca.weights))
@@ -48,7 +47,7 @@ def train_step(x):
 
 loss_values = []
 for i in range(101):
-  x0 = utils.init_batch(4,width,height,CHANNELS)
+  x0 = core.init_batch(4,width,height,CHANNELS)
 
   x, loss = train_step(x0)
   loss_val = np.log10(loss.numpy())
@@ -57,7 +56,7 @@ for i in range(101):
   #print('\r step: %d, log10(loss): %.3f'%(i, loss_val), end='')
   if VISUALIZE and i%VISUALIZE_ITERS == 0:
     #clear_output(wait=True)
-    utils.visualize_batch(x,utils.tf2grayscale,f'./checkpoints/{MODEL_NAME}_{gt_img_name}',str(i))
+    core.visualize_batch(x,core.tf2grayscale,f'./checkpoints/{MODEL_NAME}_{gt_img_name}',str(i))
   if np.isnan(loss_val):
     break
   if i%SAVE_ITERS == 0:

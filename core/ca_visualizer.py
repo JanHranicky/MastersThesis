@@ -1,6 +1,4 @@
-import utils
-import model
-
+from core import model,utils
 import tensorflow as tf
 from PIL import Image
 from matplotlib import pyplot as plt

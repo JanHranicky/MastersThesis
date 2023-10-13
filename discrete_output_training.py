@@ -1,6 +1,4 @@
-import utils
-import model
-import trainer
+from core import model,utils,trainer
 import tensorflow as tf
 from PIL import Image,ImageOps
 from IPython.display import clear_output,display
@@ -10,7 +8,7 @@ import IPython.display as display
 from matplotlib import pyplot as plt
 
 
-GT_IMG_PATH = '../img/vut_logo_small.png'
+GT_IMG_PATH = './img/vut_logo_small.png'
 gt_img = Image.open(GT_IMG_PATH)
 gt_img = ImageOps.grayscale(gt_img)
 

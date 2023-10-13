@@ -1,4 +1,4 @@
-import utils
+from core import utils
 import tensorflow as tf
 
 class CA(tf.keras.Model):

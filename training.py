@@ -1,5 +1,4 @@
-import utils
-import model
+from core import model,utils
 import tensorflow as tf
 from PIL import Image
 from IPython.display import clear_output,display
@@ -8,7 +7,7 @@ import os
 from matplotlib import pyplot as plt
 
 MODEL_NAME = 'DEFAULT_MODEL'
-GT_IMG_PATH = '../img/vut_logo_small.png'
+GT_IMG_PATH = './img/vut_logo_small.png'
 TRAIN_STEP_INTERVAL = (75,100)
 EPOCHS = 30000
 
