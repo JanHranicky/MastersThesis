@@ -12,7 +12,7 @@ GT_IMG_PATH = './img/vut_logo_small.png'
 gt_img = Image.open(GT_IMG_PATH)
 gt_img = ImageOps.grayscale(gt_img)
 
-ca = model.CA(channel_n=16)
+ca = model.CA(channel_n=16,model_name="discrete_output_CA")
 loss_f = tf.keras.losses.MeanSquaredError()
 
 t = trainer.Trainer(ca,loss_f,gt_img,GT_IMG_PATH.split('/')[-1].split('.')[0])

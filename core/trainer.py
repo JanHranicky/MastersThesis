@@ -22,7 +22,7 @@ class Trainer():
     self.save_iters = save_iters
     self.generate_gif_iters = generate_gif_iters
     self.train_step_interval = train_step_interval
-    self.checkpoint_path = f'./checkpoints/{self.model.name}_{self.gt_img_name}'
+    self.checkpoint_path = f'./checkpoints/{self.model.model_name}_{self.gt_img_name}'
 
   def visualize_batch(self,x,i):
     if self.visualize and i%self.visualize_iters == 0:
