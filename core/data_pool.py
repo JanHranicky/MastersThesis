@@ -1,35 +1,46 @@
 import random
+from core import utils
 
 class DataPool:
-    def __init__(self, data):
-        self.data = data
-        self.modified_data = dict()
+    """
+    Class that implements pool of data
+    When initialized DataPool of default len 100 is created and filled with seed tensors of defined sizes
+    Class enables fetching and commit batch so that pool training is possible
+    """
+    def __init__(self, w,h,c,data_len = 100):
+        """Constructor of DataPool class, creates datapool of len data_len
+
+        Args:
+            w (int): width of stored tensors
+            h (int): height of stored tensors
+            c (int): channel num
+            data_len (int, optional): _description_. Defaults to 100.
+        """
+        self.data = {index: value for index, value in enumerate([utils.get_seed_tensor(w,h,c)] * data_len)}
 
     def get_batch(self, batch_size):
-        keys = random.sample(list(self.data.keys()), min(batch_size, len(self.data)))
-        batch = {key: self.data[key] for key in keys}
+        """Returns random sample from self.data in a batch_size range
+
+        Args:
+            batch_size (int): number of returned tensors
+
+        Returns:
+            [tf.Tensor]: array of {batch_size} len of tensors from DataPool
+        """
+        self.keys = random.sample(list(self.data.keys()), min(batch_size, len(self.data)))
+        batch = [self.data[key] for key in self.keys]
         return batch
 
-    def commit(self):
-        self.data.update(self.modified_data)
-        self.modified_data.clear()
+    def commit(self,new_data):
+        """Updates data in DataPool with new_data parameter.
+        Should be called in rotation with get_batch() function,
+        i.e commit() updates keys of data which were previously
+        returned by get_batch() function. 
 
-# Example usage:
-if __name__ == "__main__":
-    # Initialize DataPool with some predefined data
-    initial_data = {'item1': 10, 'item2': 20, 'item3': 30, 'item4': 40}
-    data_pool = DataPool(initial_data)
-
-    # Get a batch of data
-    batch_size = 2
-    batch = data_pool.get_batch(batch_size)
-    print("Batch:", batch)
-
-    # Modify the batch and commit the changes
-    for key, value in batch.items():
-        data_pool.modified_data[key] = value * 2
-
-    data_pool.commit()
-
-    # Print the updated data
-    print("Updated Data:", data_pool.data)
+        Args:
+            new_data ([tf.Tensor]): modified data from last get_batch() call
+        """
+        for i,v in enumerate(new_data):
+            if i == len(self.keys): #new_data has more data then were fetched in get_batch() return.
+                break
+            self.data[self.keys[i]] = v
