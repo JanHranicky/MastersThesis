@@ -18,7 +18,7 @@ def batch_to_array(b):
     arr.append(x)
   return arr
 
-def visualize_batch(b,convert_f,path=None,iter=None):
+def visualize_batch(b,convert_f,path=None,iter=None,visualize=True):
   a = np.asanyarray(convert_f(b))
   imgs = []
   for x in a:
@@ -26,16 +26,17 @@ def visualize_batch(b,convert_f,path=None,iter=None):
       #x = tf.keras.utils.array_to_img(x)
     imgs.append(x)
   cnt = len(imgs)
-  plot_images(imgs,2,2,path,iter)
+  plot_images(imgs,2,cnt//2,path,iter,visualize)
 
-def plot_images(imgs,n_col,n_row,path=None,iter=None):
+def plot_images(imgs,n_col,n_row,path=None,iter=None,visualize=True):
   _, axs = plt.subplots(n_row, n_col, figsize=(12, 12))
   axs = axs.flatten()
   for img, ax in zip(imgs, axs):
       ax.imshow(img,cmap='gray', vmin=0, vmax=255)
   if path is not None:
     plt.savefig(f'{path}/batch_{iter}.png')
-  plt.show()
+  if visualize:
+    plt.show()
   
 def plot_single_image(img):
   arr = np.asarray(img)

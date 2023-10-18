@@ -77,4 +77,7 @@ class DataPool:
         b_list = tf.unstack(batch)
         seed = utils.get_seed_tensor(self.w,self.h,self.c)
         b_list[index] = seed
-        return tf.stack(b_list, axis=0) 
+        return tf.stack(b_list, axis=0)
+    
+    def as_tensor(self):
+        return tf.stack([i for i in self.data.values()], axis=0)

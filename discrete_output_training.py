@@ -19,6 +19,8 @@ t = trainer.Trainer(ca,
                     loss_f,gt_img,
                     GT_IMG_PATH.split('/')[-1].split('.')[0],
                     generate_gif_iters=100,
-                    grayscale=True
+                    grayscale=True,
+                    data_pool_training=True,
+                    visualize=False
                     )
 t.train()
