@@ -7,26 +7,6 @@ STEP_NUM = 1000
 CHANNELS = 16
 CHECKPOINT_PATH = './checkpoints/Meta_persistent/persistent_pattern_ca'+str(CHANNELS)+'_vut_logo_small/100000'
 GT_IMG_PATH = './img/vut_logo_small.png'
-
-
-def make_gif(name,frames):
-    frame_one = frames[0]
-    frame_one.save(name+".gif", format="GIF", append_images=frames,
-               save_all=True, duration=100, loop=0)
-
-def run_model_for_i(ca,w,h,steps,checkpoint_path = None):
-    x = utils.init_batch(1,w,h)
-    
-    if checkpoint_path:
-        ca.load_weights(checkpoint_path)
-
-    frames = [utils.tf2pil(utils.batch_to_array(x)[0])]
-    for i in range(steps):
-        x = ca(x)
-        frames.append(utils.tf2pil(utils.batch_to_array(x)[0]))
-        
-    return frames
-    
     
 width,height = Image.open(GT_IMG_PATH).size
 x = utils.init_batch(1,width,height)
