@@ -4,8 +4,9 @@ from PIL import Image
 from matplotlib import pyplot as plt
 
 STEP_NUM = 1000
-CHECKPOINT_PATH = '../checkpoints/vut_fit_default_model/small/13660'
-GT_IMG_PATH = '../img/vut_logo_small.png'
+CHANNELS = 16
+CHECKPOINT_PATH = './checkpoints/Meta_persistent/persistent_pattern_ca'+str(CHANNELS)+'_vut_logo_small/100000'
+GT_IMG_PATH = './img/vut_logo_small.png'
 
 
 def make_gif(name,frames):
@@ -30,12 +31,8 @@ def run_model_for_i(ca,w,h,steps,checkpoint_path = None):
 width,height = Image.open(GT_IMG_PATH).size
 x = utils.init_batch(1,width,height)
 
-ca = model.CA()
+ca = model.CA(channel_n=CHANNELS)
 ca.load_weights(CHECKPOINT_PATH)
 
-frames = [utils.tf2pil(utils.batch_to_array(x)[0])]
-for i in range(STEP_NUM):
-    x = ca(x)
-    frames.append(utils.tf2pil(utils.batch_to_array(x)[0]))
-
-make_gif('test',frames)
+imgs = utils.run_model_for_i(ca,width,height,CHANNELS,1000,True)
+utils.make_gif(str(CHANNELS)+'_channels_grayscale_persistent',imgs)
