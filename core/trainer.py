@@ -82,9 +82,10 @@ class Trainer():
         x0 = self.dp.insert_seed_tensor(x0,highest_loss_i)
       else:
         x0 = utils.init_batch(self.batch_size,width,height,self.model.channel_n)
-
+        
       x, loss = self.train_step(x0,trainer)
       loss_val = np.log10(loss.numpy())
+      print(f'epoch: {i}, loss_val={loss_val}')
       loss_values.append(loss_val)
       
       if self.data_pool_training:
