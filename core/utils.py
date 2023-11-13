@@ -37,6 +37,7 @@ def plot_images(imgs,n_col,n_row,path=None,iter=None,visualize=True):
     plt.savefig(f'{path}/batch_{iter}.png')
   if visualize:
     plt.show()
+  plt.close()
   
 def plot_single_image(img):
   arr = np.asarray(img)
