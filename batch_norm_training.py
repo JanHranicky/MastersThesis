@@ -17,20 +17,15 @@ class discreteOutTrainer(trainer.Trainer):
       with tf.GradientTape() as g:
         for i in tf.range(iter_n):
           x = self.model(x)
-          if self.grayscale:
-            l_x = utils.tf2grayscale(x)
-          else:
-            l_x = x
+          l_x = utils.convert_to_comparable_shape(x,len(self.gt_img.getbands()))
         loss = tf.math.reduce_mean(self.loss_f(self.gt_img, l_x))
       grads = g.gradient(loss, self.model.weights)
       trainer.apply_gradients(zip(grads, self.model.weights))
       return tf.cast(tf.cast(x,dtype=tf.int32),dtype=tf.float32), loss
 
 
-GT_IMG_PATH = './img/vut_logo_small.png'
+GT_IMG_PATH = './img/flag_of_france.png'
 gt_img = Image.open(GT_IMG_PATH)
-gt_img = ImageOps.grayscale(gt_img)
-
 
 layers = tf.keras.Sequential([
       tf.keras.layers.Conv2D(filters=128,kernel_size=1,activation='relu'),
@@ -38,14 +33,13 @@ layers = tf.keras.Sequential([
       tf.keras.layers.Conv2D(filters=16,kernel_size=1,
       kernel_initializer=tf.zeros_initializer),
     ])
-ca = added_conv_model.CA(channel_n=16,model_name="13_11_2023_batch_norm",rule_model=layers)
+ca = added_conv_model.CA(channel_n=16,model_name="13_11_2023_batch_norm_france",rule_model=layers)
 loss_f = tf.keras.losses.MeanSquaredError()
 
 t = discreteOutTrainer(ca,
                     loss_f,gt_img,
                     GT_IMG_PATH.split('/')[-1].split('.')[0],
                     generate_gif_iters=10000,
-                    grayscale=True,
                     data_pool_training=True,
                     visualize=False,
                     visualize_iters=10000
