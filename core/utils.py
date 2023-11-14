@@ -44,6 +44,15 @@ def plot_single_image(img):
   plt.imshow(arr, cmap='gray', vmin=0, vmax=255)
   plt.show()
 
+def convert_to_comparable_shape(b,gt_img_channels):
+  if gt_img_channels == 1:
+    if len(b.shape) == 3: #scatchy way to do it, but tensors will only be either in batch = 4 dims or single = 3 dims
+      return b[:,:,0]
+    return b[:,:,:,0]
+  if len(b.shape) == 3: #scatchy way to do it, but tensors will only be either in batch = 4 dims or single = 3 dims
+    return b[:,:,0:gt_img_channels]
+  return b[:,:,:,0:gt_img_channels]
+
 def tf2pil(t,grayscale=False):
   if not grayscale:
     return tf.keras.utils.array_to_img(to_rgb(t))

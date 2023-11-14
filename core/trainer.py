@@ -56,10 +56,7 @@ class Trainer():
     with tf.GradientTape() as g:
       for i in tf.range(iter_n):
         x = self.model(x)
-        if self.grayscale:
-          l_x = utils.tf2grayscale(x)
-        else:
-          l_x = x
+        l_x = utils.convert_to_comparable_shape(x,len(self.gt_img.getbands()))
       loss = tf.math.reduce_mean(self.loss_f(self.gt_img, l_x))
     grads = g.gradient(loss, self.model.weights)
     grads = [g/(tf.norm(g)+1e-8) for g in grads]
@@ -78,7 +75,8 @@ class Trainer():
     for i in range(self.epoch_num):
       if self.data_pool_training:
         x0 = self.dp.get_batch(self.batch_size)
-        highest_loss_i = self.dp.get_highest_loss_index(self.gt_img,utils.tf2grayscale(x0),self.loss_f)
+        converted = utils.convert_to_comparable_shape(x0,len(self.gt_img.getbands()))
+        highest_loss_i = self.dp.get_highest_loss_index(self.gt_img,converted,self.loss_f)
         x0 = self.dp.insert_seed_tensor(x0,highest_loss_i)
       else:
         x0 = utils.init_batch(self.batch_size,width,height,self.model.channel_n)
