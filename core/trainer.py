@@ -33,7 +33,7 @@ class Trainer():
   def visualize_batch(self,x,i):
     if i%self.visualize_iters == 0:
       #clear_output(wait=True)
-      utils.visualize_batch(x,utils.tf2grayscale,self.checkpoint_path,str(i),self.visualize)
+      utils.visualize_batch(utils.convert_to_comparable_shape(x,len(self.gt_img.getbands())),self.checkpoint_path,str(i),self.visualize)
       
   def save_progress(self,i,loss_values):
     if i%self.save_iters == 0:

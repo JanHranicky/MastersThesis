@@ -13,8 +13,19 @@ class discreteOutTrainer(trainer.Trainer):
         
     @tf.function
     def train_step(self,x,trainer):
-        x,loss = super().train_step(x,trainer)
-        return tf.cast(tf.cast(x,dtype=tf.int32),dtype=tf.float32), loss
+      iter_n = tf.random.uniform([], self.train_step_interval[0], self.train_step_interval[1], tf.int32)
+      with tf.GradientTape() as g:
+        for i in tf.range(iter_n):
+          x = self.model(x)
+          if self.grayscale:
+            l_x = utils.tf2grayscale(x)
+          else:
+            l_x = x
+        loss = tf.math.reduce_mean(self.loss_f(self.gt_img, l_x))
+      grads = g.gradient(loss, self.model.weights)
+      #grads = [g/(tf.norm(g)+1e-8) for g in grads]
+      trainer.apply_gradients(zip(grads, self.model.weights))
+      return x, loss  
 
 
 GT_IMG_PATH = './img/vut_logo_small.png'
