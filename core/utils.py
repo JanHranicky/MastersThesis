@@ -18,8 +18,8 @@ def batch_to_array(b):
     arr.append(x)
   return arr
 
-def visualize_batch(b,convert_f,path=None,iter=None,visualize=True):
-  a = np.asanyarray(convert_f(b))
+def visualize_batch(b,path=None,iter=None,visualize=True):
+  a = np.asanyarray(tf.cast(b,dtype=tf.int32))
   imgs = []
   for x in a:
     #if x[2]:
