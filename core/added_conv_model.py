@@ -21,12 +21,18 @@ class CA(tf.keras.Model):
     self(tf.zeros([1,3,3,channel_n])) #dummy call to initialiaze model, the dummy shape does not have to be the same as final data. But it's dimensionality should be similiar
 
   def set_rule_model(self,type,channel_n):
-    if type is not None:
-      return type
-    return tf.keras.Sequential([
+    if type is None:
+      return tf.keras.Sequential([
+        tf.keras.layers.Conv2D(filters=128,kernel_size=1,activation='relu'),
+        tf.keras.layers.Conv2D(filters=channel_n,kernel_size=1,
+        kernel_initializer=tf.zeros_initializer)
+      ])
+    elif type == "batch":
+      return tf.keras.Sequential([
       tf.keras.layers.Conv2D(filters=128,kernel_size=1,activation='relu'),
-      tf.keras.layers.Conv2D(filters=channel_n,kernel_size=1,
-      kernel_initializer=tf.zeros_initializer)
+      tf.keras.layers.BatchNormalization(),
+      tf.keras.layers.Conv2D(filters=16,kernel_size=1,
+      kernel_initializer=tf.zeros_initializer),
     ])
 
   @tf.function
