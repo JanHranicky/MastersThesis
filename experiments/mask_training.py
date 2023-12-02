@@ -8,7 +8,7 @@ import IPython.display as display
 from matplotlib import pyplot as plt
 import pathlib
 from datetime import datetime
-
+from masks import vut_logo_mask
 
 class discreteOutTrainer(trainer.Trainer):
     def __init__(self,model,loss_f,gt_img,gt_img_name,grayscale=False,data_pool_training=False,lr=0.001,epoch_num=300000,visualize=True,visualize_iters=10000,save_iters=5000,generate_gif_iters=5000,train_step_interval=(75,100)):
@@ -61,15 +61,32 @@ class discreteOutTrainer(trainer.Trainer):
         self.save_progress(i,loss_values)
         self.generate_gif(i,width,height)
 
-
-
 GT_IMG_PATH = './img/vut_logo_small.png'
 date_time = datetime.now().strftime("%m_%d_%Y")
 gt_img = Image.open(GT_IMG_PATH)
 
 ca = added_conv_model.CA(channel_n=16,model_name=date_time+'_'+os.path.basename(__file__).split('.')[0],rule_model="batch")
-loss_f = tf.keras.losses.MeanSquaredLogarithmicError()
 
+def mask_loss(img,batch):
+  img = tf.cast(img,dtype=tf.float32)
+
+  diff = batch - img
+  diff = tf.math.abs(tf.reduce_mean(diff,axis=-1))
+  
+  bckdn = vut_logo_mask.background_mask * diff
+  logo = (vut_logo_mask.logo_mask * diff)**2
+  
+  less_mask = tf.less(bckdn, 30.0 * tf.ones_like(bckdn))
+  less_indices = tf.where(less_mask)
+  less_indices_cnt = less_indices.shape[0]
+  if less_indices_cnt is not None:
+    tf.tensor_scatter_nd_update(bckdn,less_indices,tf.zeros(shape=(less_indices.shape[0],)))
+  
+  return tf.reduce_mean((bckdn**2)+logo)
+
+loss_f = mask_loss
+
+  
 t = discreteOutTrainer(ca,
                     loss_f,gt_img,
                     GT_IMG_PATH.split('/')[-1].split('.')[0],
