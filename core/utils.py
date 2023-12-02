@@ -55,6 +55,7 @@ def convert_to_comparable_shape(b,gt_img_channels):
 
 def tf2pil(t,grayscale=False):
   if not grayscale:
+    t = tf.where(tf.math.is_nan(t), tf.ones_like(t) * 65535, t); #if w is nan use 1 * NUMBER else use element in w
     return tf.keras.utils.array_to_img(to_rgb(t))
   return Image.fromarray(np.uint8(tf2grayscale(t)),mode="L")
 
@@ -109,3 +110,9 @@ def run_model_for_i(ca,w,h,c,steps,grayscale=False,checkpoint_path = None):
         x = ca(x)
         frames.append(tf2pil(x[0].numpy(),grayscale))
     return frames
+  
+def open_image(path):
+  return np.asarray(Image.open(path))
+
+def generate_empty_img(width,height):
+    return np.full((width,height,4),255,dtype=int)

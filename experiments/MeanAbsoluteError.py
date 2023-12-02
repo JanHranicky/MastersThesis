@@ -9,6 +9,7 @@ from matplotlib import pyplot as plt
 import pathlib
 from datetime import datetime
 
+
 class discreteOutTrainer(trainer.Trainer):
     def __init__(self,model,loss_f,gt_img,gt_img_name,grayscale=False,data_pool_training=False,lr=0.001,epoch_num=300000,visualize=True,visualize_iters=10000,save_iters=5000,generate_gif_iters=5000,train_step_interval=(75,100)):
         super().__init__(model,loss_f,gt_img,gt_img_name,grayscale,data_pool_training,lr,epoch_num,visualize,visualize_iters,save_iters,generate_gif_iters,train_step_interval)
@@ -62,7 +63,7 @@ class discreteOutTrainer(trainer.Trainer):
 
 
 
-GT_IMG_PATH = './img/duck.png'
+GT_IMG_PATH = './img/vut_logo_small.png'
 date_time = datetime.now().strftime("%m_%d_%Y")
 gt_img = Image.open(GT_IMG_PATH)
 
@@ -72,8 +73,8 @@ layers = tf.keras.Sequential([
       tf.keras.layers.Conv2D(filters=16,kernel_size=1,
       kernel_initializer=tf.zeros_initializer),
     ])
-ca = added_conv_model.CA(channel_n=16,model_name=date_time+"_batch_norm",rule_model=layers)
-loss_f = tf.keras.losses.MeanSquaredError()
+ca = added_conv_model.CA(channel_n=16,model_name=date_time+'_'+os.path.basename(__file__).split('.')[0],rule_model=layers)
+loss_f = tf.keras.losses.MeanSquaredLogarithmicError()
 
 t = discreteOutTrainer(ca,
                     loss_f,gt_img,
