@@ -44,7 +44,7 @@ class discreteOutTrainer(trainer.Trainer):
           x0 = self.dp.insert_seed_tensor(x0,highest_loss_i)
         else:
           x0 = utils.init_batch(self.batch_size,width,height,self.model.channel_n)
-          
+        
         x, loss = self.train_step(x0,trainer)
         self.prev_step_loss = loss
         
@@ -70,21 +70,22 @@ ca = added_conv_model.CA(channel_n=16,model_name=date_time+'_'+os.path.basename(
 def mask_loss(img,batch):
   img = tf.cast(img,dtype=tf.float32)
 
-  diff = batch - img
-  diff = tf.math.abs(tf.reduce_mean(diff,axis=-1))
+  diff = (batch - img)**2
+  diff = tf.reduce_mean(diff,axis=-1)
   
   bckdn = vut_logo_mask.background_mask * diff
-  logo = (vut_logo_mask.logo_mask * diff)**2
+  logo = vut_logo_mask.logo_mask * diff
   
-  less_mask = tf.less(bckdn, 30.0 * tf.ones_like(bckdn))
+  less_mask = tf.less(bckdn, 100.0 * tf.ones_like(bckdn))
   less_indices = tf.where(less_mask)
   less_indices_cnt = less_indices.shape[0]
   if less_indices_cnt is not None:
     tf.tensor_scatter_nd_update(bckdn,less_indices,tf.zeros(shape=(less_indices.shape[0],)))
   
-  return tf.reduce_mean((bckdn**2)+logo)
+  return tf.reduce_mean(bckdn+logo)
 
 loss_f = mask_loss
+#loss_f = tf.keras.losses.MeanSquaredError()
 
   
 t = discreteOutTrainer(ca,
