@@ -17,6 +17,9 @@ class Display():
         self.canvas_grid = []
         self.model_input = None
         
+        self.step = 0
+        self.images = []
+        
         self.set_image(self.x,self.y)
 
     def calculate_sq_size(self,x,y):
@@ -64,11 +67,39 @@ class Display():
                                         fill=self.rgb_to_hex(255,255,255)))
         self.canvas.bind("<Button-1>", self.pixel_clicked)
     
-    def display_image(self,image_data):
+    def add_image(self,data):
+        self.images.append(data)
+    
+    def reset(self):
+        self.step = 0
+        self.images = []
+        self.model_input = None
+        self.set_image(self.x,self.y)
+    
+    def forward(self,image_data):
         if self.canvas is None:
             self.init_canvas_grid(self.x,self.y)
             print('canvas intialized')
         
+        print(f'self.step = {self.step}')
+        print(f'len(self.images) = {len(self.images)}')
+        if self.step != len(self.images):
+            image_data = self.images[self.step] #image already in memory
+        else:
+            self.add_image(image_data) #append new image
+            
+        self.display_image(image_data)
+        self.step += 1
+        
+    def back(self):
+        if self.step == 0:
+            return
+        print(f'self.step before = {self.step}')
+        self.step -= 1
+        print(f'self step after = {self.step}')
+        self.display_image(self.images[self.step])
+    
+    def display_image(self,image_data):       
         width, height = image_data.size
         for y in range(height):
             for x in range(width):
@@ -77,10 +108,3 @@ class Display():
                 #print(f"Pixel at ({x}, {y}): {hex_color}")
                 id =  self.canvas_grid[y][x]
                 self.canvas.itemconfig(id, fill=hex_color)
-        
-        #for y, row in enumerate(image_data):
-        #    for x, pixel in enumerate(row):
-        #        #print(f'at index [y][x]=[{y}][{x}]')
-        #        id =  self.canvas_grid[y][x]
-        #        self.canvas.itemconfig(id, fill=self.rgb_to_hex(pixel[0],pixel[1],pixel[2]))
-        #        #print(f'set color of canvas rectangle to {self.rgb_to_hex(pixel[0],pixel[1],pixel[2])}')

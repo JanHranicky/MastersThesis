@@ -28,7 +28,6 @@ def load_image(display):
     image_data = utils.generate_empty_img(width,height)
     display.set_image(width,height)
 
-step = 0
 def model_step(display):
     if display.model_input is None:
         x = utils.init_batch(1,display.x,display.y,display.model.channel_n)
@@ -37,14 +36,9 @@ def model_step(display):
     
     x = display.model(x)
     display.model_input = x
-    print(f'step: {step}')
     print(utils.tf2pil(x[0].numpy()))
     
-    display.display_image(utils.tf2pil(x[0].numpy()))
-    #x = np.clip(x[0].numpy().astype(int), 0, 255)
-    #display.display_image(utils.to_rgb(x))
-    #print('one model step')
-
+    display.forward(utils.tf2pil(x[0].numpy()))
 
 def tksleep(t):
     'emulating time.sleep(seconds)'
@@ -54,18 +48,16 @@ def tksleep(t):
     root.after(ms, var.set, 1)
     root.wait_variable(var)
 
-animate = False
-step = 0
 
-def play(d):
+animate = False
+def play(button,d):
     global animate
-    animate = True
+    animate = not animate
+    
+    button.configure(text= "Stop" if animate else "Play")
     while animate:
         model_step(d)
         tksleep(0.05)
-        
-        global step
-        step += 1
 
 def stop():
     print('in stop()')
@@ -73,38 +65,60 @@ def stop():
     animate = False
 
 def reset(d):
-    global step
-    step = 0
-    d.model_input = None
-    d.set_image(d.x,d.y)
+    d.reset()
     
+def step_back(d):
+    d.back()
+  
+def keypress(event, key):
+    global d
+    if key == "left":
+        step_back(d)
+    elif key == "right":
+        model_step(d)
+    elif key == "space":
+        global play_button
+        play(play_button,d)
+
+def create_button_group(parent):
+    group = tk.Frame(parent)
+    group.pack()
+    
+    return group
+
+d = None
+play_button = None
+
 def main():
     canvas_x,canvas_y = 1000,1000
 
     root = tk.Tk()
     root.title("CA state visualization")
 
-    button_frame = tk.Frame(root)
-    button_frame.pack() 
-
-    load_model_button = tk.Button(button_frame, text="Load Model", command=lambda: load_model(d))
+    load_button_group = create_button_group(root)
+    load_model_button = tk.Button(load_button_group, text="Load Model", command=lambda: load_model(d))
     load_model_button.pack(side=tk.LEFT)
-    load_img_button = tk.Button(button_frame, text="Load Image", command=lambda: load_image(d))
+    load_img_button = tk.Button(load_button_group, text="Load Image", command=lambda: load_image(d))
     load_img_button.pack(side=tk.LEFT)
     
-    previous_button = tk.Button(button_frame, text="Previous", )
+    control_button_group = create_button_group(root)
+    previous_button = tk.Button(control_button_group, text="Previous", command= lambda: step_back(d))
     previous_button.pack(side=tk.LEFT)
-    next_button = tk.Button(button_frame, text="Next",command=lambda : model_step(d))
+    next_button = tk.Button(control_button_group, text="Next",command=lambda : model_step(d))
     next_button.pack(side=tk.LEFT)
     
-    play_button = tk.Button(button_frame, text="Play", command= lambda: play(d))
+    animation_button_group = create_button_group(root)
+    global play_button
+    play_button = tk.Button(animation_button_group, text="Play", command= lambda: play(play_button,d))
     play_button.pack(side=tk.LEFT)
-    stop_button = tk.Button(button_frame, text="Stop",command=lambda : stop())
-    stop_button.pack(side=tk.LEFT)
-    reset_button = tk.Button(button_frame, text="Reset",command=lambda : reset(d))
+    reset_button = tk.Button(animation_button_group, text="Reset",command=lambda : reset(d))
     reset_button.pack(side=tk.LEFT)
     
+    global d
     d = display.Display(canvas_x,canvas_y)
+    root.bind('<Left>',func=lambda event: keypress(event, key="left"))
+    root.bind('<Right>',func=lambda event: keypress(event, key="right"))
+    root.bind('<space>',func=lambda event: keypress(event, key="space"))
     
     root.mainloop()
     
