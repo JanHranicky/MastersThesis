@@ -62,11 +62,11 @@ class discreteOutTrainer(trainer.Trainer):
 
 
 
-GT_IMG_PATH = './img/duck.png'
+GT_IMG_PATH = './img/SEP_title.png'
 date_time = datetime.now().strftime("%m_%d_%Y")
 gt_img = Image.open(GT_IMG_PATH)
 
-ca = added_conv_model.CA(channel_n=16,model_name=date_time+"_batch_norm",rule_model="batch")
+ca = added_conv_model.CA(channel_n=16,model_name=date_time+'_'+os.path.basename(__file__).split('.')[0],rule_model="batch")
 loss_f = tf.keras.losses.MeanSquaredError()
 
 t = discreteOutTrainer(ca,
