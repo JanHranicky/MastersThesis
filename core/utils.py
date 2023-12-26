@@ -79,17 +79,20 @@ def to_rgb(t):
     return t[:,:,0:3]
   return t[:,:,:,0:3]
 
-def get_seed_tensor(w,h,channels):
+def get_seed_tensor(w,h,channels,max_dim=None):
   blank_t = np.zeros([w,h,channels])
-  blank_t[w//2, h//2, :] = 255
+  if max_dim is None:
+    blank_t[w//2, h//2, :] = 255
+  else:
+    blank_t[w//2, h//2, :] = (255 % max_dim)
   blank_t = tf.convert_to_tensor(blank_t,dtype="float32")
   return blank_t
 
-def init_batch(n,w,h,c=16):
+def init_batch(n,w,h,c=16,max_dim=None):
   '''
   Returns a batch of empty tensors except for a single spot in the middle which has value of 1
   '''
-  blank_t = get_seed_tensor(w,h,c)
+  blank_t = get_seed_tensor(w,h,c,max_dim)
   blank_t = tf.expand_dims(blank_t, 0)
   return tf.repeat(blank_t,n,0)
 
