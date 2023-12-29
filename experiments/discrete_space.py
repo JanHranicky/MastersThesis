@@ -96,7 +96,7 @@ EPOCH_NUM = 300000
 TRAIN_INTERVAL = (20,30)
 
 LOSS = tf.keras.losses.MeanSquaredError()
-LR = 0.01
+LR = 0.001
 
 date_time = datetime.now().strftime("%m_%d_%Y")
 date_time = datetime.now().strftime("%m_%d_%Y")
