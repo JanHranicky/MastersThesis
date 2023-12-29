@@ -9,10 +9,12 @@ from random import randrange
 import random
 import matplotlib.pyplot as plt
 import numpy as np
+import keras
 
 
+@keras.saving.register_keras_serializable()
 class CA(tf.keras.Model):
-  '''
+  ''' 
   Represents the model of cellular automata
   '''
   def __init__(self,channel_n=1,model_name="CA"):
@@ -50,9 +52,9 @@ class CA(tf.keras.Model):
     return x
 
 
-def img_to_discrete_space_tf(img,state_num):
+def img_to_discrete_space_tf(img,state_num,multiplier=1):
     img = utils.pil2tf(img)[:,:,0]
-    img = tf.math.floormod(img,tf.ones_like(img)*state_num)
+    img = tf.math.floormod(img,tf.ones_like(img)*state_num) * multiplier
     return img
 
 
@@ -86,7 +88,8 @@ def save_progress(path, ca,i,loss_values):
     plt.savefig(f'{path}/loss_{i}.png')
 
 GT_IMG_PATH = './img/xhrani02.png'
-STATE_NUM = 10
+STATE_NUM = 100
+MULTIPLIER = 100
 
 BATCH_SIZE = 16
 EPOCH_NUM = 300000
@@ -98,7 +101,7 @@ LR = 0.01
 date_time = datetime.now().strftime("%m_%d_%Y")
 date_time = datetime.now().strftime("%m_%d_%Y")
 gt_img = Image.open(GT_IMG_PATH)
-gt_tf = img_to_discrete_space_tf(gt_img,STATE_NUM)
+gt_tf = img_to_discrete_space_tf(gt_img,STATE_NUM,MULTIPLIER)
 width,height = gt_tf.shape[0],gt_tf.shape[1]
 
 ca = CA(model_name=date_time+'_'+os.path.basename(__file__).split('.')[0])
@@ -111,7 +114,6 @@ gt_img_name = GT_IMG_PATH.split('/')[-1].split('.')[0]
 checkpoint_path = f'./checkpoints/{ca.model_name}_{gt_img_name}'
 
 
-@tf.function
 def train_step(x):
     with tf.GradientTape() as tape:
         for i in range(randrange(TRAIN_INTERVAL[0],TRAIN_INTERVAL[1])):
@@ -123,19 +125,30 @@ def train_step(x):
         # Update weights
         trainer.apply_gradients(zip(gradients, ca.trainable_variables))
         
+    #tf.print(x[0])
+    #tf.print(gt_tf)
+    #display_tensor(color_list,gt_tf)
     x = tf.cast(tf.math.floormod(tf.cast(x,dtype=tf.int32),tf.ones_like(x,dtype=tf.int32)*10),dtype=tf.float32)
     return x,loss
 
 loss_values = []
 for e in range(EPOCH_NUM):
-    x0 = utils.init_batch(BATCH_SIZE,width,height,ca.channel_n,STATE_NUM)
+    x0 = utils.init_batch(BATCH_SIZE,width,height,ca.channel_n,STATE_NUM*MULTIPLIER)
 
     x,loss = train_step(x0)
     print(f'[e,loss] = [{e},{loss.numpy()}]')
-    
+    #if e%1000 == 0:
+    #    tf.print(x[0])
+    #    display_tensor(color_list,utils.convert_to_comparable_shape(x[0],1))
     loss_values.append(np.log10(loss.numpy()))
     
     if e%5000 == 0:
         save_progress(checkpoint_path,ca,e,loss_values)
-
+#ca.load_weights("./checkpoints/12_27_2023_discrete_spacenew_xhrani02/25000") 
+#x = utils.init_batch(BATCH_SIZE,width,height,ca.channel_n,STATE_NUM)
+#
+#for i in range(100):
+#    x = ca(x)
+#    
+#x = tf.math.floormod(tf.cast(x,dtype=tf.int32),tf.ones_like(x,dtype=tf.int32)*STATE_NUM)
 #display_tensor(color_list,utils.convert_to_comparable_shape(x[0],1))
