@@ -72,6 +72,7 @@ def display_tensor(c_map,t):
     colors_mapped = tf.gather(c_map, tf.cast(t,dtype=tf.int32))
     # Display the image using Matplotlib
     plt.imshow(colors_mapped.numpy())
+        
     plt.axis('off')  # Turn off axis labels
     plt.title('Tensor Displayed as Image with Corresponding Colors')
     plt.ioff()
@@ -88,8 +89,8 @@ def save_progress(path, ca,i,loss_values):
     plt.savefig(f'{path}/loss_{i}.png')
 
 GT_IMG_PATH = './img/xhrani02.png'
-STATE_NUM = 100
-MULTIPLIER = 50
+STATE_NUM = 16581375
+MULTIPLIER = 1
 
 BATCH_SIZE = 16
 EPOCH_NUM = 300000
@@ -104,10 +105,12 @@ gt_img = Image.open(GT_IMG_PATH)
 gt_tf = img_to_discrete_space_tf(gt_img,STATE_NUM,MULTIPLIER)
 width,height = gt_tf.shape[0],gt_tf.shape[1]
 
-ca = CA(model_name=date_time+'_'+os.path.basename(__file__).split('.')[0])
-lr_sched = tf.keras.optimizers.schedules.PiecewiseConstantDecay(
-    [2000], [LR, LR*0.1])
-trainer = tf.keras.optimizers.Adam(lr_sched)
+ca = CA(model_name=date_time+'_'+os.path.basename(__file__).split('.')[0]+"_whole_rgb")
+#lr_sched = tf.keras.optimizers.schedules.PiecewiseConstantDecay(
+#    [2000], [LR, LR*0.1])
+#trainer = tf.keras.optimizers.Adam(lr_sched)
+
+trainer = tf.keras.optimizers.Adam()
 
 color_list = generate_random_colors(STATE_NUM)
 gt_img_name = GT_IMG_PATH.split('/')[-1].split('.')[0]
@@ -132,24 +135,33 @@ def train_step(x):
     return x,loss
 
 loss_values = []
-for e in range(EPOCH_NUM):
-    x0 = utils.init_batch(BATCH_SIZE,width,height,ca.channel_n,STATE_NUM*MULTIPLIER)
-
-    x,loss = train_step(x0)
-    print(f'[e,loss] = [{e},{loss.numpy()}]')
-    #if e%1000 == 0:
-    #    tf.print(x[0])
-    #    display_tensor(color_list,utils.convert_to_comparable_shape(x[0],1))
-    loss_values.append(np.log10(loss.numpy()))
-    
-    if e%5000 == 0:
-        save_progress(checkpoint_path,ca,e,loss_values)
-        
-#ca.load_weights("./checkpoints/12_27_2023_discrete_spacenew_xhrani02/25000") 
-#x = utils.init_batch(BATCH_SIZE,width,height,ca.channel_n,STATE_NUM)
+lowest_loss = float('inf')
+#for e in range(EPOCH_NUM):
+#    x0 = utils.init_batch(BATCH_SIZE,width,height,ca.channel_n,STATE_NUM*MULTIPLIER)
 #
-#for i in range(100):
-#    x = ca(x)
+#    x,loss = train_step(x0)
+#    if loss < lowest_loss:
+#        print(f'NEW LOWEST [e,loss] = [{e},{loss.numpy()}]')
+#    print(f'[e,loss] = [{e},{np.log10(loss.numpy())}]')
+#    #if e%1000 == 0:
+#    #    display_tensor(color_list,gt_tf)
+#    #    tf.print(x[0])
+#    #    display_tensor(color_list,utils.convert_to_comparable_shape(x[0],1))
+#    loss_values.append(np.log10(loss.numpy()))
 #    
-#x = tf.math.floormod(tf.cast(x,dtype=tf.int32),tf.ones_like(x,dtype=tf.int32)*STATE_NUM)
-#display_tensor(color_list,utils.convert_to_comparable_shape(x[0],1))
+#    if e%5000 == 0:
+#        save_progress(checkpoint_path,ca,e,loss_values)
+
+tf.print(gt_tf,summarize=-1)  
+display_tensor(color_list,gt_tf)
+  
+ca.load_weights("./checkpoints/12_30_2023_discrete_space_whole_rgb_xhrani02/5000") 
+x = utils.init_batch(BATCH_SIZE,width,height,ca.channel_n,STATE_NUM)
+
+for i in range(100):
+    x = ca(x)
+
+tf.print(x,summarize=-1)
+x = tf.math.floormod(tf.cast(x,dtype=tf.int32),tf.ones_like(x,dtype=tf.int32)*STATE_NUM)
+display_tensor(color_list,utils.convert_to_comparable_shape(x[0],1))
+tf.print(x,summarize=-1)
