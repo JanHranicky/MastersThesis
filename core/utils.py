@@ -120,7 +120,11 @@ def open_image(path):
 def generate_empty_img(width,height):
     return np.full((width,height,4),255,dtype=int)
   
-def img_to_discrete_space_tf(img,state_num,multiplier=1):
-    img = pil2tf(img)[:,:,0]
+def img_to_discrete_space_tf(img,state_num,target_channels,multiplier=1):
+    img = pil2tf(img)
+
+    if img.shape[-1] > target_channels:
+      img = img[:,:,0:target_channels]
+    
     img = tf.math.floormod(img,tf.ones_like(img)*state_num) * multiplier
     return img
