@@ -136,32 +136,33 @@ def train_step(x):
 
 loss_values = []
 lowest_loss = float('inf')
-#for e in range(EPOCH_NUM):
-#    x0 = utils.init_batch(BATCH_SIZE,width,height,ca.channel_n,STATE_NUM*MULTIPLIER)
+for e in range(EPOCH_NUM):
+    x0 = utils.init_batch(BATCH_SIZE,width,height,ca.channel_n,STATE_NUM*MULTIPLIER)
+
+    x,loss = train_step(x0)
+    if loss < lowest_loss:
+        print(f'NEW LOWEST [e,loss] = [{e},{loss.numpy()}]')
+    print(f'[e,loss] = [{e},{np.log10(loss.numpy())}]')
+    #if e%1000 == 0:
+    #    display_tensor(color_list,gt_tf)
+    #    tf.print(x[0])
+    #    display_tensor(color_list,utils.convert_to_comparable_shape(x[0],1))
+    loss_values.append(np.log10(loss.numpy()))
+    
+    if e%5000 == 0:
+        save_progress(checkpoint_path,ca,e,loss_values)
+
+#tf.print(gt_tf,summarize=-1)  
+#display_tensor(color_list,gt_tf)
+#  
+#ca.load_weights("./checkpoints/12_30_2023_discrete_space_whole_rgb_xhrani02/5000") 
+#x = utils.init_batch(BATCH_SIZE,width,height,ca.channel_n,STATE_NUM)
 #
-#    x,loss = train_step(x0)
-#    if loss < lowest_loss:
-#        print(f'NEW LOWEST [e,loss] = [{e},{loss.numpy()}]')
-#    print(f'[e,loss] = [{e},{np.log10(loss.numpy())}]')
-#    #if e%1000 == 0:
-#    #    display_tensor(color_list,gt_tf)
-#    #    tf.print(x[0])
-#    #    display_tensor(color_list,utils.convert_to_comparable_shape(x[0],1))
-#    loss_values.append(np.log10(loss.numpy()))
-#    
-#    if e%5000 == 0:
-#        save_progress(checkpoint_path,ca,e,loss_values)
-
-tf.print(gt_tf,summarize=-1)  
-display_tensor(color_list,gt_tf)
-  
-ca.load_weights("./checkpoints/12_30_2023_discrete_space_whole_rgb_xhrani02/5000") 
-x = utils.init_batch(BATCH_SIZE,width,height,ca.channel_n,STATE_NUM)
-
-for i in range(100):
-    x = ca(x)
-
-tf.print(x,summarize=-1)
-x = tf.math.floormod(tf.cast(x,dtype=tf.int32),tf.ones_like(x,dtype=tf.int32)*STATE_NUM)
-display_tensor(color_list,utils.convert_to_comparable_shape(x[0],1))
-tf.print(x,summarize=-1)
+#for i in range(100):
+#    x = ca(x)
+#
+#tf.print(x,summarize=-1)
+#x = tf.math.floormod(tf.cast(x,dtype=tf.int32),tf.ones_like(x,dtype=tf.int32)*STATE_NUM)
+#display_tensor(color_list,utils.convert_to_comparable_shape(x[0],1))
+#tf.print(x,summarize=-1)
+#

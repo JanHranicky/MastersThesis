@@ -33,11 +33,11 @@ class CA(tf.keras.Model):
 
   def set_rule_model(self,channel_n):
     return tf.keras.Sequential([
-      tf.keras.layers.Conv2D(filters=128,kernel_size=1,activation='relu'),
+      tf.keras.layers.Conv2D(filters=128,kernel_size=1,activation='elu'),
       tf.keras.layers.BatchNormalization(),
-      tf.keras.layers.Conv2D(filters=64,kernel_size=1,activation='relu'),
+      tf.keras.layers.Conv2D(filters=64,kernel_size=1,activation='elu'),
       tf.keras.layers.BatchNormalization(),
-      tf.keras.layers.Conv2D(filters=32,kernel_size=1,activation='relu'),
+      tf.keras.layers.Conv2D(filters=32,kernel_size=1,activation='elu'),
       tf.keras.layers.BatchNormalization(),
       tf.keras.layers.Conv2D(filters=channel_n,kernel_size=1,
       kernel_initializer=tf.zeros_initializer),
@@ -105,8 +105,8 @@ def mask_loss(img,batch):
   return tf.reduce_mean(bckdn+logo)
 
 GT_IMG_PATH = './img/xhrani02.png'
-STATE_NUM = 100
-MULTIPLIER = 50
+STATE_NUM = 10000
+MULTIPLIER = 1
 
 BCKND_ERROR = 50
 
@@ -114,7 +114,8 @@ BATCH_SIZE = 16
 EPOCH_NUM = 300000
 TRAIN_INTERVAL = (75,100)
 
-LOSS = mask_loss
+#LOSS = mask_loss
+LOSS = tf.keras.losses.MeanSquaredError()
 LR = 0.001
 
 date_time = datetime.now().strftime("%m_%d_%Y")
@@ -141,6 +142,7 @@ def train_step(x):
         
         # Compute gradients
         gradients = tape.gradient(loss, ca.trainable_variables)
+        gradients = [(tf.clip_by_value(grad, -1., 1.)) for grad in gradients]
         # Update weights
         trainer.apply_gradients(zip(gradients, ca.trainable_variables))
         

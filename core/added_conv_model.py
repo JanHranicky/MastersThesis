@@ -31,7 +31,7 @@ class CA(tf.keras.Model):
       return tf.keras.Sequential([
       tf.keras.layers.Conv2D(filters=128,kernel_size=1,activation='relu'),
       tf.keras.layers.BatchNormalization(),
-      tf.keras.layers.Conv2D(filters=16,kernel_size=1,
+      tf.keras.layers.Conv2D(filters=channel_n,kernel_size=1,
       kernel_initializer=tf.zeros_initializer),
     ])
 

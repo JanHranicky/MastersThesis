@@ -17,7 +17,7 @@ class CA(tf.keras.Model):
   ''' 
   Represents the model of cellular automata
   '''
-  def __init__(self,channel_n=1,model_name="CA"):
+  def __init__(self,channel_n=4,model_name="CA"):
     super().__init__() #Need to be called to initialize the super tf.keras.Model class in order to use tensorflow utilities
 
     self.channel_n = channel_n
@@ -54,7 +54,6 @@ class CA(tf.keras.Model):
       tf.keras.layers.Conv2D(filters=1,kernel_size=1,activation='relu'),
       tf.keras.layers.BatchNormalization(),
       tf.keras.layers.Conv2D(filters=1,kernel_size=1,activation='relu'),
-      tf.keras.layers.BatchNormalization(),
       tf.keras.layers.Conv2D(filters=channel_n,kernel_size=1),
     ])
 
@@ -104,7 +103,7 @@ def save_progress(path, ca,i,loss_values):
     plt.savefig(f'{path}/loss_{i}.png')
 
 GT_IMG_PATH = './img/xhrani02.png'
-STATE_NUM = 16581375
+STATE_NUM = 255
 MULTIPLIER = 1
 
 BATCH_SIZE = 16
@@ -120,7 +119,7 @@ gt_img = Image.open(GT_IMG_PATH)
 gt_tf = img_to_discrete_space_tf(gt_img,STATE_NUM,MULTIPLIER)
 width,height = gt_tf.shape[0],gt_tf.shape[1]
 
-ca = CA(model_name=date_time+'_'+os.path.basename(__file__).split('.')[0]+"_whole_rgb")
+ca = CA(model_name=date_time+'_'+os.path.basename(__file__).split('.')[0])
 #lr_sched = tf.keras.optimizers.schedules.PiecewiseConstantDecay(
 #    [2000], [LR, LR*0.1])
 #trainer = tf.keras.optimizers.Adam(lr_sched)
@@ -136,7 +135,7 @@ def train_step(x):
     with tf.GradientTape() as tape:
         for i in range(randrange(TRAIN_INTERVAL[0],TRAIN_INTERVAL[1])):
             x = ca(x)
-        loss = LOSS(utils.convert_to_comparable_shape(x,1),gt_tf)
+        loss = LOSS(utils.convert_to_comparable_shape(x,1),gt_tf,STATE_NUM*MULTIPLIER)
         
         # Compute gradients
         gradients = tape.gradient(loss, ca.trainable_variables)
@@ -146,13 +145,13 @@ def train_step(x):
     #tf.print(x[0])
     #tf.print(gt_tf)
     #display_tensor(color_list,gt_tf)
-    x = tf.cast(tf.math.floormod(tf.cast(x,dtype=tf.int32),tf.ones_like(x,dtype=tf.int32)*10),dtype=tf.float32)
+    x = tf.cast(tf.math.floormod(tf.cast(x,dtype=tf.int32),tf.ones_like(x,dtype=tf.int32)*(STATE_NUM*MULTIPLIER)),dtype=tf.float32)
     return x,loss
 
 loss_values = []
 lowest_loss = float('inf')
 for e in range(EPOCH_NUM):
-    x0 = utils.init_batch(BATCH_SIZE,width,height,ca.channel_n,STATE_NUM*MULTIPLIER)
+    x0 = utils.init_batch(BATCH_SIZE,width,height,ca.channel_n)
 
     x,loss = train_step(x0)
     if loss < lowest_loss:
