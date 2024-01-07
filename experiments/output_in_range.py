@@ -12,7 +12,7 @@ from datetime import datetime
 class discreteOutTrainer(trainer.Trainer):
     def __init__(self,model,loss_f,gt_img,gt_img_name,grayscale=False,data_pool_training=False,lr=0.001,epoch_num=300000,visualize=True,visualize_iters=10000,save_iters=5000,generate_gif_iters=5000,train_step_interval=(75,100)):
         super().__init__(model,loss_f,gt_img,gt_img_name,grayscale,data_pool_training,lr,epoch_num,visualize,visualize_iters,save_iters,generate_gif_iters,train_step_interval)
-        self.STATE_NUM = 256
+        self.STATE_NUM = 128
         
         self.gt_tf = utils.img_to_discrete_space_tf(self.gt_img,self.STATE_NUM,len(self.gt_img.getbands()))
                 
