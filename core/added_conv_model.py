@@ -23,13 +23,13 @@ class CA(tf.keras.Model):
   def set_rule_model(self,type,channel_n):
     if type is None:
       return tf.keras.Sequential([
-        tf.keras.layers.Conv2D(filters=128,kernel_size=1,activation='relu'),
+        tf.keras.layers.Conv2D(filters=128,kernel_size=1,activation='elu'),
         tf.keras.layers.Conv2D(filters=channel_n,kernel_size=1,
         kernel_initializer=tf.zeros_initializer)
       ])
     elif type == "batch":
       return tf.keras.Sequential([
-      tf.keras.layers.Conv2D(filters=128,kernel_size=1,activation='relu'),
+      tf.keras.layers.Conv2D(filters=128,kernel_size=1,activation='elu'),
       tf.keras.layers.BatchNormalization(),
       tf.keras.layers.Conv2D(filters=channel_n,kernel_size=1,
       kernel_initializer=tf.zeros_initializer),
