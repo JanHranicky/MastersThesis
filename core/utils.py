@@ -125,7 +125,10 @@ def img_to_discrete_space_tf(img,state_num,target_channels,multiplier=1):
     img = pil2tf(img)
 
     if img.shape[-1] > target_channels:
-      img = img[:,:,0:target_channels]
+      if target_channels == 1:
+        img = img[:,:,0]
+      else:
+        img = img[:,:,0:target_channels]
     
     img = tf.math.floormod(img,tf.ones_like(img)*state_num) * multiplier
     return img
