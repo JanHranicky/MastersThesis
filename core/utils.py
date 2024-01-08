@@ -4,6 +4,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from tensorflow import keras
 import os
+import random
 
 def pil2tf(im):
   return tf.keras.utils.img_to_array(im,dtype="float32")
@@ -128,3 +129,24 @@ def img_to_discrete_space_tf(img,state_num,target_channels,multiplier=1):
     
     img = tf.math.floormod(img,tf.ones_like(img)*state_num) * multiplier
     return img
+  
+def display_tensor(c_map,t):
+  colors_mapped = tf.gather(c_map, tf.cast(t,dtype=tf.int32))
+  # Display the image using Matplotlib
+  plt.imshow(colors_mapped.numpy())
+      
+  plt.axis('off')  # Turn off axis labels
+  plt.title('Tensor Displayed as Image with Corresponding Colors')
+  plt.ioff()
+  plt.show()
+
+
+def generate_random_colors(num_colors):
+    # Generate 'num_colors' random colors in RGB format
+    random_colors = []
+    for _ in range(num_colors):
+        red = random.randint(0, 255)
+        green = random.randint(0, 255)
+        blue = random.randint(0, 255)
+        random_colors.append((red, green, blue))
+    return random_colors
