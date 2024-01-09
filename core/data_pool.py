@@ -50,7 +50,7 @@ class DataPool:
                 break
             self.data[self.keys[i]] = v
             
-    def get_highest_loss_index(self,gt_img,data,loss_f):
+    def get_highest_loss_index(self,gt_img,data,loss_f,args=None):
         """Returns index of the tensor with highest value of loss_f
 
         Args:
@@ -61,7 +61,10 @@ class DataPool:
         Returns:
             int: index of Tensor in data that has the highest value of loss_f
         """
-        loss = tf.map_fn(fn = lambda t: loss_f(gt_img,t),elems=data)
+        if args is not None:
+            loss = tf.map_fn(fn = lambda t: loss_f(*((t,)+args)),elems=data)
+        else:
+            loss = tf.map_fn(fn = lambda t: loss_f(gt_img,t),elems=data)
         return tf.math.argmax(loss).numpy()
 
     def insert_seed_tensor(self,batch,index):

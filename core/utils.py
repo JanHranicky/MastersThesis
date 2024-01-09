@@ -46,6 +46,8 @@ def plot_single_image(img):
   plt.show()
 
 def convert_to_comparable_shape(b,gt_img_channels):
+  if len(b.shape) == 2:
+    return b
   if gt_img_channels == 1:
     if len(b.shape) == 3: #scatchy way to do it, but tensors will only be either in batch = 4 dims or single = 3 dims
       return b[:,:,0]
@@ -124,11 +126,8 @@ def generate_empty_img(width,height):
 def img_to_discrete_space_tf(img,state_num,target_channels,multiplier=1):
     img = pil2tf(img)
 
-    if img.shape[-1] > target_channels:
-      if target_channels == 1:
-        img = img[:,:,0]
-      else:
-        img = img[:,:,0:target_channels]
+    if len(img.shape) != 2 and img.shape[-1] > target_channels:
+      img = transform_last_channel(img,target_channels)
     
     img = tf.math.floormod(img,tf.ones_like(img)*state_num) * multiplier
     return img
@@ -153,3 +152,35 @@ def generate_random_colors(num_colors):
         blue = random.randint(0, 255)
         random_colors.append((red, green, blue))
     return random_colors
+  
+  
+def transform_last_channel(b, target_channels):
+    """Transforms the last channel of given tensor
+
+    Args:
+        b (tf.Tensor): input tensor
+        target_channels (Integer): number of output channels has to be >= 0 
+
+    Returns:
+        (tf.Tensor): Tensor with the target_channels in the last channel 
+    """
+    if target_channels < 0:
+        raise RuntimeError("target_channels has to be greater or equal to 0")
+    return b[..., :target_channels] if target_channels else b[..., 0]
+
+def match_last_channel(b,img):
+    """Converts the input tensor to a comparable shape with the input img.
+    I.e. returned b has to have the same number of last channels as the input image
+
+    Args:
+        b (tf.Tensor): input tensor
+        img (tf.Tensor|PIL.Image): input tensor of PIL Image
+
+    Returns:
+        (tf.Tensor): transformed input tensor that shares last channels with the PIL Image
+    """
+    if not tf.is_tensor(img): #convert to tensor if not already
+        img = utils.pil2tf(img)
+    target_c = 0 if len(img.shape) == 2 else img.shape[-1] #0 if img has only one channel, else target of channels
+    
+    return transform_last_channel(b,target_c)
