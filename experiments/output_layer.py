@@ -141,11 +141,11 @@ t = discreteOutTrainer(ca,
                     loss_f,gt_img,
                     GT_IMG_PATH.split('/')[-1].split('.')[0],
                     state_num=STATES,
-                    generate_gif_iters=100,
+                    generate_gif_iters=1000,
                     data_pool_training=True,
                     visualize=False,
-                    visualize_iters=100,
-                    save_iters=500
+                    visualize_iters=1000,
+                    save_iters=1000
                     )
 t.train()
 
