@@ -22,9 +22,9 @@ class CA(tf.keras.Model):
 
 
   def modulo_activation(self, x):
-    #return x
+    return x
     mod_x = tf.math.floormod(x,tf.ones_like(x,dtype=tf.float32)*self.states)
-    #return mod_x
+    return mod_x
     return my_floor(mod_x)
 
   

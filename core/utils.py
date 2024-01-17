@@ -180,7 +180,7 @@ def match_last_channel(b,img):
         (tf.Tensor): transformed input tensor that shares last channels with the PIL Image
     """
     if not tf.is_tensor(img): #convert to tensor if not already
-        img = utils.pil2tf(img)
+        img = pil2tf(img)
     target_c = 0 if len(img.shape) == 2 else img.shape[-1] #0 if img has only one channel, else target of channels
     
     return transform_last_channel(b,target_c)
