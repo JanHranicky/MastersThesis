@@ -12,6 +12,10 @@ class CA(tf.keras.Model):
     self.channel_n = channel_n
     self.model_name = model_name
     self.rule_model = self.set_rule_model(channel_n)
+    
+    self.b_norm_layer = tf.keras.layers.BatchNormalization()
+    self.rule_model.add(self.b_norm_layer)
+    
     self.perceive_conv = tf.keras.layers.DepthwiseConv2D(
       kernel_size=3,
       depth_multiplier=3,

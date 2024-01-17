@@ -24,7 +24,7 @@ class discreteOutTrainer(trainer.Trainer):
                       random.randint(0, 255),
                       random.randint(0, 255))
                      for _ in range(self.STATE_NUM+1)]
-    #@tf.function
+    @tf.function
     def train_step(self,x,trainer):
       iter_n = tf.random.uniform([], self.train_step_interval[0], self.train_step_interval[1], tf.int32)
       with tf.GradientTape() as g:
@@ -36,7 +36,7 @@ class discreteOutTrainer(trainer.Trainer):
         #tf.debugging.check_numerics(loss, "Loss contains NaN or Inf values")
 
       grads = g.gradient(loss, self.model.weights)
-      grads = [tf.clip_by_norm(grad,self.clip_value) for grad in grads]
+      #grads = [tf.clip_by_norm(grad,self.clip_value) for grad in grads]
 
       #tf.print('before clip',grads)
       #grads = [g/(tf.norm(g)+1e-8) for g in grads]
