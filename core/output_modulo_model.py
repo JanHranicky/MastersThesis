@@ -42,8 +42,8 @@ class CA(tf.keras.Model):
     y = self.perceive_conv(x)
     dx = self.rule_model(y)
     dx = self.my_floor(dx)
-    #return x+dx
-    return self.my_floormod(x+dx)
+    return x+dx
+    #return self.my_floormod(x+dx)
     return tf.math.floormod(x+dx,tf.ones_like(x,dtype=tf.float32)*self.states)
   
   @tf.custom_gradient
