@@ -120,11 +120,11 @@ class discreteOutTrainer(trainer.Trainer):
       #print(str(self.checkpoint_path)+'/'+str(i))
       self.make_gif(str(self.checkpoint_path)+'/'+str(i),frames)
 
-GT_IMG_PATH = './img/xhrani02_100x100.png'
+GT_IMG_PATH = './img/xhrani02.png'
 date_time = datetime.now().strftime("%m_%d_%Y")
 gt_img = Image.open(GT_IMG_PATH)
 
-CHANNEL_NUM = 1
+CHANNEL_NUM = 8
 STATES = 8
 
 def custom_mse(x, gt, states):
@@ -141,11 +141,11 @@ t = discreteOutTrainer(ca,
                     loss_f,gt_img,
                     GT_IMG_PATH.split('/')[-1].split('.')[0],
                     state_num=STATES,
-                    generate_gif_iters=1000,
+                    generate_gif_iters=500,
                     data_pool_training=True,
                     visualize=False,
-                    visualize_iters=1000,
-                    save_iters=1000
+                    visualize_iters=500,
+                    save_iters=500
                     )
 t.train()
 

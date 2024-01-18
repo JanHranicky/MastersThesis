@@ -35,6 +35,8 @@ class CA(tf.keras.Model):
   def set_rule_model(self,channel_n):
     return tf.keras.Sequential([
       tf.keras.layers.Conv2D(filters=128,kernel_size=1,activation='elu'),
+      tf.keras.layers.Conv2D(filters=64,kernel_size=1,activation='elu'),
+      tf.keras.layers.Conv2D(filters=32,kernel_size=1,activation='elu'),
       tf.keras.layers.Conv2D(filters=channel_n,kernel_size=1,
       kernel_initializer=tf.zeros_initializer, activation=self.modulo_activation),
     ])
@@ -44,7 +46,7 @@ class CA(tf.keras.Model):
     y = self.perceive_conv(x)
     dx = self.rule_model(y)
 
-    return dx
+    return x+dx
   
 @tf.custom_gradient
 def my_floor(x):
