@@ -11,23 +11,24 @@ from datetime import datetime
 import random
 import sys
 
-def save_integer_parameter():
+def parse_parameters():
     # Check if at least one command-line argument is provided
-    if len(sys.argv) < 2:
-        print("Please provide a parameter as a command-line argument.")
+    if len(sys.argv) < 3:
+        print("Please provide a parameters as a command-line argument.")
         exit()
 
     # Get the command-line argument (assuming it's the first one after the script name)
-    parameter_str = sys.argv[1]
+    parameter_str_channels = sys.argv[1]
+    parameter_str_img = sys.argv[2]
 
     try:
         # Convert the parameter to an integer
-        parameter_int = int(parameter_str)
+        parameter_int = int(parameter_str_channels)
 
         # Save the integer or use it as needed
         print("Integer parameter:", parameter_int)
 
-        return parameter_int
+        return parameter_int, parameter_str_img
 
     except ValueError:
         print("Error: The provided parameter is not a valid integer.")
@@ -146,11 +147,13 @@ class discreteOutTrainer(trainer.Trainer):
       #print(str(self.checkpoint_path)+'/'+str(i))
       self.make_gif(str(self.checkpoint_path)+'/'+str(i),frames)
 
-GT_IMG_PATH = './img/xhrani02.png'
+channels,img_name = parse_parameters()
+
+GT_IMG_PATH = './img/'+str(img_name)
 date_time = datetime.now().strftime("%m_%d_%Y")
 gt_img = Image.open(GT_IMG_PATH)
 
-CHANNEL_NUM = save_integer_parameter()
+CHANNEL_NUM = channels
 STATES = 8
 
 def custom_mse(x, gt, states):
