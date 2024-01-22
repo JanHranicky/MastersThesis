@@ -44,7 +44,7 @@ class Trainer():
       plt.title(f'Loss function epoch num. {i}')
       plt.xlabel('Epoch')
       plt.ylabel('Loss value')
-      plt.savefig(f'{self.checkpoint_path}/loss_{i}.png')
+      plt.savefig(f'{self.checkpoint_path}/loss.png')
       
   def generate_gif(self,i,w,h):
     if not self.generate_gif or i%self.generate_gif_iters != 0: return

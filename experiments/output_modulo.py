@@ -20,7 +20,8 @@ def parse_parameters():
     # Get the command-line argument (assuming it's the first one after the script name)
     parameter_str_channels = sys.argv[1]
     parameter_str_img = sys.argv[2]
-
+    parameter_int_from = sys.argv[3]
+    parameter_int_to = sys.argv[4]
     try:
         # Convert the parameter to an integer
         parameter_int = int(parameter_str_channels)
@@ -28,7 +29,7 @@ def parse_parameters():
         # Save the integer or use it as needed
         print("Integer parameter:", parameter_int)
 
-        return parameter_int, parameter_str_img
+        return parameter_int, parameter_str_img, (int(parameter_int_from),int(parameter_int_to))
 
     except ValueError:
         print("Error: The provided parameter is not a valid integer.")
@@ -39,9 +40,8 @@ class discreteOutTrainer(trainer.Trainer):
         self.STATE_NUM = state_num
         self.batch_size = 16
         self.compare_channels = 1
-        
+
         self.gt_tf = utils.img_to_discrete_space_tf(self.gt_img,self.STATE_NUM,self.compare_channels)
-    
         self.clip_value = 5.0
         self.c_list = [(random.randint(0, 255),
                       random.randint(0, 255),
@@ -91,7 +91,10 @@ class discreteOutTrainer(trainer.Trainer):
           x0 = utils.init_batch(self.batch_size,width,height,self.model.channel_n)
         
         x, loss = self.train_step(x0,trainer)
-        
+        if loss.numpy() == 0:
+          self.model.save_weights(self.checkpoint_path+'/solution_'+str(i))
+          self.model.save(self.checkpoint_path+'/solution_'+str(i)+'.keras')
+          
         loss_val = np.log10(loss.numpy())
         print(f'epoch: {i}, loss={loss.numpy()}, log_10(loss)={loss_val}')
         loss_values.append(loss_val)
@@ -147,7 +150,7 @@ class discreteOutTrainer(trainer.Trainer):
       #print(str(self.checkpoint_path)+'/'+str(i))
       self.make_gif(str(self.checkpoint_path)+'/'+str(i),frames)
 
-channels,img_name = parse_parameters()
+channels,img_name,interval = parse_parameters()
 
 GT_IMG_PATH = './img/'+str(img_name)
 date_time = datetime.now().strftime("%m_%d_%Y")
@@ -155,12 +158,13 @@ gt_img = Image.open(GT_IMG_PATH)
 
 CHANNEL_NUM = channels
 STATES = 8
+STEPS = interval
 
 def custom_mse(x, gt, states):
     l_x = utils.match_last_channel(x,gt)
     return tf.reduce_mean(tf.square(l_x - gt))
 
-ca = output_modulo_model.CA(channel_n=CHANNEL_NUM,model_name=date_time+'_modulo_'+os.path.basename(__file__).split('.')[0]+'_'+str(STATES)+"_states_"+str(CHANNEL_NUM)+"_layers",states=STATES)
+ca = output_modulo_model.CA(channel_n=CHANNEL_NUM,model_name=date_time+'_modulo_'+os.path.basename(__file__).split('.')[0]+'_'+str(STATES)+"_states_"+str(CHANNEL_NUM)+"_layers_"+str(STEPS[0])+"_"+str(STEPS[1])+"_steps",states=STATES)
 #ca.load_weights("./checkpoints/01_10_2024_in_range_single_channel_cmp8_states_single_c_compare_4_channels_xhrani02_100x100/64500")
 
 #loss_f = tf.keras.losses.MeanSquaredError()
@@ -174,7 +178,8 @@ t = discreteOutTrainer(ca,
                     data_pool_training=True,
                     visualize=False,
                     visualize_iters=100,
-                    save_iters=100
+                    save_iters=100,
+                    train_step_interval=STEPS
                     )
 t.train()
 
