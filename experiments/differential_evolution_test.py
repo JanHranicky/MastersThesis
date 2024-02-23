@@ -15,20 +15,23 @@ import math
 
 def parse_parameters():
     # Check if at least one command-line argument is provided
-    if len(sys.argv) < 2:
+    if len(sys.argv) < 3:
         print("Please provide a parameters as a command-line argument.")
         exit()
 
     # Get the command-line argument (assuming it's the first one after the script name)
     parameter_str_channels = sys.argv[1]
+    parameter_str_iterations = sys.argv[2]
+
     try:
         # Convert the parameter to an integer
         parameter_int = int(parameter_str_channels)
 
         # Save the integer or use it as needed
         print("Integer parameter:", parameter_int)
+        print("Integer parameter:", int(parameter_str_iterations))
 
-        return parameter_int
+        return parameter_int, int(parameter_str_iterations)
 
     except ValueError:
         print("Error: The provided parameter is not a valid integer.")
@@ -37,7 +40,7 @@ GT_IMG_PATH = './img/vut_logo_17x17_2px_padding.png'
 date_time = datetime.now().strftime("%m_%d_%Y")
 gt_img = Image.open(GT_IMG_PATH)
 
-CHANNEL_NUM = parse_parameters()
+CHANNEL_NUM, MAX_ITERS = parse_parameters()
 STATES = 8
 STEPS = (20,30)
 
@@ -45,7 +48,6 @@ POP_SIZE = 40
 SEED = random.randint(0,sys.maxsize)
 
 COMPARE_CHANNELS = 1
-MAX_ITERS = 10000
 
 height,width = gt_img.size
 gt_tf = utils.img_to_discrete_space_tf(gt_img,STATES,COMPARE_CHANNELS)
