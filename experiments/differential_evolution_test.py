@@ -30,6 +30,7 @@ MAX_ITERS = 10000
 height,width = gt_img.size
 gt_tf = utils.img_to_discrete_space_tf(gt_img,STATES,COMPARE_CHANNELS)
 ca = output_modulo_model.CA(channel_n=CHANNEL_NUM,model_name=date_time+'_modulo_'+os.path.basename(__file__).split('.')[0]+'_'+str(STATES)+"_states_"+str(CHANNEL_NUM)+"_layers_"+str(STEPS[0])+"_"+str(STEPS[1])+"_steps",states=STATES)
+CHECKPOINT_PATH = f'./checkpoints/DE/'+ca.model_name
 #ca.load_weights("./checkpoints/01_20_2024_modulo_output_modulo_8_states_3_layers_vut_logo_17x17_2px_padding/15700")
 
 def extract_weights_as_tensors(model):
@@ -56,6 +57,34 @@ def chromozone2weights(c):
     """
     return [var.numpy() for var in c]
 
+def grayscale_to_rgb(grayscale_image):
+    c_list = [(random.randint(0, 255),
+                      random.randint(0, 255),
+                      random.randint(0, 255))
+                     for _ in range(STATES+1)]
+  # Create a new image with the same size as the original but in RGB mode
+    rgb_image = Image.new("RGB", grayscale_image.size)
+  
+  # Iterate through each pixel in the image
+    for x in range(grayscale_image.width):
+        for y in range(grayscale_image.height):
+          # Get the grayscale pixel value at (x, y)
+            grayscale_value = grayscale_image.getpixel((x, y))
+          
+          # Map the grayscale value to an RGB value
+          # For simplicity, let's set R, G, and B to the grayscale value
+            rgb_value = c_list[grayscale_value]
+          
+          # Set the RGB value at (x, y) in the new image
+            rgb_image.putpixel((x, y), rgb_value)
+    
+    return rgb_image    
+
+def make_gif(name,frames):
+  frame_one = frames[0]
+  frame_one.save(name+".gif", format="GIF", append_images=frames,
+            save_all=True, duration=100, loop=0)
+
 def custom_mse(x, gt):
     l_x = utils.match_last_channel(x,gt)
     return tf.reduce_mean(tf.square(l_x - gt))
@@ -64,6 +93,7 @@ tf_weights = extract_weights_as_tensors(ca)
 
 iteration = 0
 lowest_loss = sys.maxsize
+loss_values = []
 # extrakce parameteru do seznamu z tensorflow modelu DONE
 # populace bude tvorena vahami modelu
 # objektivni funkce spusti model s danymi vahami na obrazek a vrati MSE
@@ -71,7 +101,9 @@ lowest_loss = sys.maxsize
 def test_objective(*c):
     global iteration
     global lowest_loss
-    print(f'itearation {iteration}/{MAX_ITERS}')
+    global loss_values
+    
+    print(f'iteration {iteration}/{MAX_ITERS}')
     #argument is a list of tensors with batch size being the size of population
     weights = [chromozone2weights([tensor[i] for tensor in c]) for i in range(POP_SIZE)]
     #construct NN with these parameters and return lists of population size len with the value of objective function
@@ -87,12 +119,34 @@ def test_objective(*c):
         if loss.numpy() < lowest_loss:
             lowest_loss = loss.numpy()
             print(f'new lowest loss found {lowest_loss}')
+            ca.save_weights(CHECKPOINT_PATH+'/'+str(iteration))
+            
+            frames = []
+            x = utils.init_batch(1,width,height,CHANNEL_NUM)
+            for _ in range(STEPS[1]):
+                x = ca(x)
+                
+                f = tf.math.floormod(x,tf.ones_like(x,dtype=tf.float32)*STATES)
+                f = tf.math.round(f)[0][:,:,0]
+                
+                f = Image.fromarray(np.uint8(f.numpy()),mode="L")
+                frames.append(grayscale_to_rgb(f))
+            
+            make_gif(str(CHECKPOINT_PATH)+'/'+str(iteration),frames)
+            
         nn_scores.append(loss.numpy())
     
+    loss_values = loss_values + nn_scores
     nn_scores = tf.convert_to_tensor(nn_scores)
-    #print(nn_scores)
     
     iteration += 1 
+    
+    #plt.plot(loss_values)
+    #plt.title(f'Loss function iteration {iteration}')
+    #plt.xlabel('Iteration')
+    #plt.ylabel('Loss value')
+    #plt.savefig(f'{CHECKPOINT_PATH}/loss.png')
+
     return nn_scores    
 
 print('Starting algorithm')
