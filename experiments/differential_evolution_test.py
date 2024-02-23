@@ -15,7 +15,7 @@ import math
 
 def parse_parameters():
     # Check if at least one command-line argument is provided
-    if len(sys.argv) < 3:
+    if len(sys.argv) < 2:
         print("Please provide a parameters as a command-line argument.")
         exit()
 
