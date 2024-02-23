@@ -17,7 +17,7 @@ GT_IMG_PATH = './img/vut_logo_17x17_2px_padding.png'
 date_time = datetime.now().strftime("%m_%d_%Y")
 gt_img = Image.open(GT_IMG_PATH)
 
-CHANNEL_NUM = 3
+CHANNEL_NUM = 1
 STATES = 8
 STEPS = (20,30)
 
