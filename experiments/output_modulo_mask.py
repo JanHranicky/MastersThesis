@@ -35,13 +35,6 @@ def parse_parameters():
         print("Error: The provided parameter is not a valid integer.")
 
 class discreteOutTrainer(trainer.Trainer):
-    def pad_tensor(self, t,padding_num):
-        paddings = []
-        for _ in tf.range(tf.rank(t)):
-            paddings.append([padding_num,padding_num])
-        
-        return tf.pad(t, tf.constant(paddings), "CONSTANT") 
-
     def __init__(self,model,loss_f,gt_img,gt_img_name,state_num,grayscale=False,data_pool_training=False,lr=0.001,epoch_num=300000,visualize=True,visualize_iters=10000,save_iters=5000,generate_gif_iters=5000,train_step_interval=(75,100),plot_loss_iters=500):
         super().__init__(model,loss_f,gt_img,gt_img_name,grayscale,data_pool_training,lr,epoch_num,visualize,visualize_iters,save_iters,generate_gif_iters,train_step_interval,plot_loss_iters=plot_loss_iters)
         self.STATE_NUM = state_num
