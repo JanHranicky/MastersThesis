@@ -13,6 +13,7 @@ import random
 import sys 
 import math
 import argparse
+from masks import vut_logo_mask,vut_logo_6x7_2px_padding_mask
 
 def parse_int_tuple(arg):
     try:
@@ -67,9 +68,10 @@ COMPARE_CHANNELS = 1
 
 height,width = gt_img.size
 gt_tf = utils.img_to_discrete_space_tf(gt_img,arguments['states'],COMPARE_CHANNELS)
-model_name = "{}+{}+channels_{}+iters_{}+states_{}+train_interval_{}+std_dev_{}+pop_size_{}+diff_weight_{}+cross_prob_{}+seed_{}".format(
-    GT_IMG_PATH.split('/')[-1].split('.')[0], #gt_img name
+model_name = "{}+{}+{}+channels_{}+iters_{}+states_{}+train_interval_{}+std_dev_{}+pop_size_{}+diff_weight_{}+cross_prob_{}+seed_{}".format(
     date_time,
+    "mask_loss",
+    GT_IMG_PATH.split('/')[-1].split('.')[0], #gt_img name
     arguments['channels'],
     arguments['iters'],
     arguments['states'],
@@ -140,6 +142,27 @@ def custom_mse(x, gt):
     l_x = utils.match_last_channel(x,gt)
     return tf.reduce_mean(tf.square(l_x - gt))
 
+TRESHOLD = 1
+LOSS = arguments['states']
+
+def mask_loss(img,batch):
+  l_x = utils.match_last_channel(batch,img)
+  
+  img = tf.cast(img,dtype=tf.float32)
+
+  diff = (l_x - img)**2
+  diff = tf.reduce_mean(diff,axis=-1)
+  
+  bckdn = vut_logo_6x7_2px_padding_mask.background_mask * diff
+  logo = vut_logo_6x7_2px_padding_mask.logo_mask * diff
+  
+  more_mask = tf.greater(logo, 0.0 * tf.ones_like(logo))
+  less_indices = tf.where(more_mask)
+  less_indices_cnt = less_indices.shape[0]
+  if less_indices_cnt is not None:
+    logo = tf.tensor_scatter_nd_update(logo,less_indices,(tf.ones(shape=(less_indices.shape[0],)) * 7) )
+  return tf.reduce_mean(bckdn+logo)
+
 tf_weights = extract_weights_as_tensors(ca)
 
 iteration = 0
@@ -166,7 +189,9 @@ def test_objective(*c):
         for _ in range(tf.random.uniform([], arguments['train_interval'][0], arguments['train_interval'][1], tf.int32)):
             x = ca(x)
         #print(x)
-        loss = custom_mse(x,gt_tf)
+        #loss = custom_mse(x,gt_tf)
+        loss = mask_loss(gt_tf,x)
+
         if loss.numpy() < lowest_loss:
             lowest_loss = loss.numpy()
             print(f'new lowest loss found {lowest_loss}')
