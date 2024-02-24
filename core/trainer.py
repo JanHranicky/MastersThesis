@@ -10,7 +10,7 @@ import pathlib
 
 
 class Trainer():
-  def __init__(self,model,loss_f,gt_img,gt_img_name,grayscale=False,data_pool_training=False,lr=0.001,epoch_num=30000,visualize=True,visualize_iters=100,save_iters=5000,generate_gif_iters=5000,train_step_interval=(75,100)) -> None:
+  def __init__(self,model,loss_f,gt_img,gt_img_name,grayscale=False,data_pool_training=False,lr=0.001,epoch_num=30000,visualize=True,visualize_iters=100,save_iters=5000,generate_gif_iters=5000,train_step_interval=(75,100),plot_loss_iters=500) -> None:
     self.model = model
     self.batch_size = 8
     self.loss_f = loss_f
@@ -29,22 +29,26 @@ class Trainer():
     self.generate_gif_iters = generate_gif_iters
     self.train_step_interval = train_step_interval
     self.checkpoint_path = f'./checkpoints/{self.model.model_name}_{self.gt_img_name}'
+    self.plot_loss_iters = plot_loss_iters
 
   def visualize_batch(self,x,i):
     if i%self.visualize_iters == 0:
       #clear_output(wait=True)
       utils.visualize_batch(utils.convert_to_comparable_shape(x,len(self.gt_img.getbands())),self.checkpoint_path,str(i),self.visualize)
       
-  def save_progress(self,i,loss_values):
+  def plot_loss(self,i,loss_values):
+    if i%self.plot_loss_iters == 0:
+        plt.plot(loss_values)
+        plt.title(f'Loss function epoch num. {i}')
+        plt.xlabel('Epoch')
+        plt.ylabel('Loss value')
+        plt.savefig(f'{self.checkpoint_path}/loss.png')
+      
+  def save_progress(self,i):
     if i%self.save_iters == 0:
       self.model.save_weights(self.checkpoint_path+'/'+str(i))
       self.model.save(self.checkpoint_path+'/'+str(i)+'.keras')
 
-      plt.plot(loss_values)
-      plt.title(f'Loss function epoch num. {i}')
-      plt.xlabel('Epoch')
-      plt.ylabel('Loss value')
-      plt.savefig(f'{self.checkpoint_path}/loss.png')
       
   def generate_gif(self,i,w,h):
     if not self.generate_gif or i%self.generate_gif_iters != 0: return
@@ -93,5 +97,6 @@ class Trainer():
       self.visualize_batch(x,i)
       if np.isnan(loss_val):
         break
-      self.save_progress(i,loss_values)
+      self.plot_loss(i,loss_values)
+      self.save_progress(i)
       self.generate_gif(i,width,height)

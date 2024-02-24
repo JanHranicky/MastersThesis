@@ -166,6 +166,7 @@ def transform_last_channel(b, target_channels):
     """
     if target_channels < 0:
         raise RuntimeError("target_channels has to be greater or equal to 0")
+
     return b[..., :target_channels] if target_channels else b[..., 0]
 
 def match_last_channel(b,img):
