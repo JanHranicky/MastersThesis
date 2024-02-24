@@ -12,46 +12,75 @@ from datetime import datetime
 import random
 import sys 
 import math
+import argparse
 
-def parse_parameters():
-    # Check if at least one command-line argument is provided
-    if len(sys.argv) < 3:
-        print("Please provide a parameters as a command-line argument.")
-        exit()
-
-    # Get the command-line argument (assuming it's the first one after the script name)
-    parameter_str_channels = sys.argv[1]
-    parameter_str_iterations = sys.argv[2]
-
+def parse_int_tuple(arg):
     try:
-        # Convert the parameter to an integer
-        parameter_int = int(parameter_str_channels)
-
-        # Save the integer or use it as needed
-        print("Integer parameter:", parameter_int)
-        print("Integer parameter:", int(parameter_str_iterations))
-
-        return parameter_int, int(parameter_str_iterations)
-
+        # Assuming the input format is (x, y)
+        x, y = map(int, arg.strip('()').split(','))
+        return x, y
     except ValueError:
-        print("Error: The provided parameter is not a valid integer.")
+        raise argparse.ArgumentTypeError("Invalid int tuple format. Use (x, y)")
 
-GT_IMG_PATH = './img/vut_logo_17x17_2px_padding.png'
+def parse_arguments():
+    parser = argparse.ArgumentParser(description='Trains neural network using differential evolution')
+
+    # Add arguments
+    parser.add_argument('-c', '--channels', type=int, help='Number of channels of the model', default=1)
+    parser.add_argument('-i', '--iters', type=int, help='Maximum number of iterations', default=1000)
+    parser.add_argument('-s', '--states', type=int, help='Size of the state space.', default=8)
+    parser.add_argument('-t', '--train_interval', type=parse_int_tuple, help='Train interval of the network', default=(20,30))
+    parser.add_argument('-d', '--std_dev', type=float, help='Stddev used to generate initial population', default=0.02)
+    parser.add_argument('-p', '--pop_size', type=int, help='size of the population', default=40)
+    parser.add_argument('-w', '--diff_weight', type=float, help='The parameter controlling the strength of mutation in the algorithm', default=0.5)
+    parser.add_argument('-r', '--cross_prob', type=float, help='The probability of recombination per site', default=0.9)
+    parser.add_argument('-g', '--seed', type=int, help='Seed for generator', default=random.randint(0,sys.maxsize))
+    parser.add_argument('-m', '--image', type=str, help='Path to GT image', default='./img/vut_logo_17x17_2px_padding.png')
+
+    # Parse the command line arguments
+    args = parser.parse_args()
+
+    # Access the parsed arguments using dot notation
+    parameters = {
+        'channels': args.channels,
+        'iters': args.iters,
+        'states': args.states,
+        'train_interval': args.train_interval,
+        'std_dev': args.std_dev,
+        'pop_size': args.pop_size,
+        'diff_weight': args.diff_weight,
+        'cross_prob': args.cross_prob,
+        'seed': args.seed,
+        'image': args.image
+    }
+
+    return parameters
+
+arguments = parse_arguments()
+print(arguments)
+
+GT_IMG_PATH = arguments['image']
 date_time = datetime.now().strftime("%m_%d_%Y")
 gt_img = Image.open(GT_IMG_PATH)
-
-CHANNEL_NUM, MAX_ITERS = parse_parameters()
-STATES = 8
-STEPS = (20,30)
-
-POP_SIZE = 40
-SEED = random.randint(0,sys.maxsize)
 
 COMPARE_CHANNELS = 1
 
 height,width = gt_img.size
-gt_tf = utils.img_to_discrete_space_tf(gt_img,STATES,COMPARE_CHANNELS)
-ca = output_modulo_model.CA(channel_n=CHANNEL_NUM,model_name=date_time+'_modulo_'+os.path.basename(__file__).split('.')[0]+'_'+str(STATES)+"_states_"+str(CHANNEL_NUM)+"_layers_"+str(STEPS[0])+"_"+str(STEPS[1])+"_steps",states=STATES)
+gt_tf = utils.img_to_discrete_space_tf(gt_img,arguments['states'],COMPARE_CHANNELS)
+model_name = "{}+{}+channels_{}+iters_{}+states_{}+train_interval_{}+std_dev_{}+pop_size_{}+diff_weight_{}+cross_prob_{}+seed_{}".format(
+    GT_IMG_PATH.split('/')[-1].split('.')[0], #gt_img name
+    date_time,
+    arguments['channels'],
+    arguments['iters'],
+    arguments['states'],
+    arguments['train_interval'],
+    arguments['std_dev'],
+    arguments['pop_size'],
+    arguments['diff_weight'],
+    arguments['cross_prob'],
+    arguments['seed']
+)
+ca = output_modulo_model.CA(channel_n=arguments['channels'],model_name=model_name,states=arguments['states'])
 CHECKPOINT_PATH = f'./checkpoints/DE/'+ca.model_name
 #ca.load_weights("./checkpoints/01_20_2024_modulo_output_modulo_8_states_3_layers_vut_logo_17x17_2px_padding/15700")
 
@@ -83,7 +112,7 @@ def grayscale_to_rgb(grayscale_image):
     c_list = [(random.randint(0, 255),
                       random.randint(0, 255),
                       random.randint(0, 255))
-                     for _ in range(STATES+1)]
+                     for _ in range(arguments['states']+1)]
   # Create a new image with the same size as the original but in RGB mode
     rgb_image = Image.new("RGB", grayscale_image.size)
   
@@ -125,36 +154,37 @@ def test_objective(*c):
     global lowest_loss
     global loss_values
     
-    print(f'iteration {iteration}/{MAX_ITERS}')
+    print("iteration {}/{}".format(iteration,arguments['iters']))
     #argument is a list of tensors with batch size being the size of population
-    weights = [chromozone2weights([tensor[i] for tensor in c]) for i in range(POP_SIZE)]
+    weights = [chromozone2weights([tensor[i] for tensor in c]) for i in range(arguments['pop_size'])]
     #construct NN with these parameters and return lists of population size len with the value of objective function
     nn_scores = []
     for w in weights:
         ca.set_weights(w)
         
         x = utils.init_batch(1,width,height,ca.channel_n)
-        for _ in range(tf.random.uniform([], STEPS[0], STEPS[1], tf.int32)):
+        for _ in range(tf.random.uniform([], arguments['train_interval'][0], arguments['train_interval'][1], tf.int32)):
             x = ca(x)
         #print(x)
         loss = custom_mse(x,gt_tf)
         if loss.numpy() < lowest_loss:
             lowest_loss = loss.numpy()
             print(f'new lowest loss found {lowest_loss}')
-            ca.save_weights(CHECKPOINT_PATH+'/'+str(iteration))
+            save_path = CHECKPOINT_PATH+'/'+str(iteration)+'_'+"{:.2f}".format(loss.numpy())
+            ca.save_weights(save_path)
             
             frames = []
-            x = utils.init_batch(1,width,height,CHANNEL_NUM)
-            for _ in range(STEPS[1]):
+            x = utils.init_batch(1,width,height,arguments['channels'])
+            for _ in range(arguments['train_interval'][1]):
                 x = ca(x)
                 
-                f = tf.math.floormod(x,tf.ones_like(x,dtype=tf.float32)*STATES)
+                f = tf.math.floormod(x,tf.ones_like(x,dtype=tf.float32)*arguments['states'])
                 f = tf.math.round(f)[0][:,:,0]
                 
                 f = Image.fromarray(np.uint8(f.numpy()),mode="L")
                 frames.append(grayscale_to_rgb(f))
             
-            make_gif(str(CHECKPOINT_PATH)+'/'+str(iteration),frames)
+            make_gif(save_path,frames)
             
         nn_scores.append(loss.numpy())
     
@@ -176,10 +206,13 @@ print('Starting algorithm')
 trained_nn = tfp.optimizer.differential_evolution_minimize(
     test_objective,
     initial_position=tf_weights,
-    population_size=POP_SIZE,
-    population_stddev=0.02,
-    max_iterations=MAX_ITERS,
-    seed=SEED)
+    population_size=arguments['pop_size'],
+    population_stddev=arguments['std_dev'],
+    max_iterations=arguments['iters'],
+    differential_weight=arguments['diff_weight'],
+    crossover_prob=arguments['cross_prob'],
+    seed=arguments['seed']
+)
 
 print(trained_nn.converged)
 #print(trained_nn.num_objective_evaluations)
