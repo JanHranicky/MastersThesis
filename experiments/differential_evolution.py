@@ -34,9 +34,10 @@ def parse_arguments():
     parser.add_argument('-d', '--std_dev', type=float, help='Stddev used to generate initial population', default=0.02)
     parser.add_argument('-p', '--pop_size', type=int, help='size of the population', default=40)
     parser.add_argument('-w', '--diff_weight', type=float, help='The parameter controlling the strength of mutation in the algorithm', default=0.5)
-    parser.add_argument('-r', '--cross_prob', type=float, help='The probability of recombination per site', default=0.9)
+    parser.add_argument('-x', '--cross_prob', type=float, help='The probability of recombination per site', default=0.9)
     parser.add_argument('-g', '--seed', type=int, help='Seed for generator', default=random.randint(0,sys.maxsize))
     parser.add_argument('-m', '--image', type=str, help='Path to GT image', default='./img/vut_logo_17x17_2px_padding.png')
+    parser.add_argument('-r', '--run', type=int, help='Number of the run. If provided results will be stored in a subfolder', default=None)
 
     # Parse the command line arguments
     args = parser.parse_args()
@@ -52,7 +53,8 @@ def parse_arguments():
         'diff_weight': args.diff_weight,
         'cross_prob': args.cross_prob,
         'seed': args.seed,
-        'image': args.image
+        'image': args.image,
+        'run': args.run
     }
 
     return parameters
@@ -68,7 +70,7 @@ COMPARE_CHANNELS = 1
 
 height,width = gt_img.size
 gt_tf = utils.img_to_discrete_space_tf(gt_img,arguments['states'],COMPARE_CHANNELS)
-model_name = "{}+{}+{}+channels_{}+iters_{}+states_{}+train_interval_{}+std_dev_{}+pop_size_{}+diff_weight_{}+cross_prob_{}+seed_{}".format(
+model_name = "{}+{}+{}+channels_{}+iters_{}+states_{}+train_interval_{}+std_dev_{}+pop_size_{}+diff_weight_{}+cross_prob_{}".format(
     date_time,
     "mask_loss",
     GT_IMG_PATH.split('/')[-1].split('.')[0], #gt_img name
@@ -79,11 +81,12 @@ model_name = "{}+{}+{}+channels_{}+iters_{}+states_{}+train_interval_{}+std_dev_
     arguments['std_dev'],
     arguments['pop_size'],
     arguments['diff_weight'],
-    arguments['cross_prob'],
-    arguments['seed']
+    arguments['cross_prob']
 )
 ca = output_modulo_model.CA(channel_n=arguments['channels'],model_name=model_name,states=arguments['states'])
 CHECKPOINT_PATH = f'./checkpoints/DE/'+ca.model_name
+RUN_NUM = arguments['run']
+
 #ca.load_weights("./checkpoints/01_20_2024_modulo_output_modulo_8_states_3_layers_vut_logo_17x17_2px_padding/15700")
 
 def extract_weights_as_tensors(model):
@@ -193,9 +196,16 @@ def test_objective(*c):
         loss = mask_loss(gt_tf,x)
 
         if loss.numpy() < lowest_loss:
+            global CHECKPOINT_PATH
+            
             lowest_loss = loss.numpy()
             print(f'new lowest loss found {lowest_loss}')
-            save_path = CHECKPOINT_PATH+'/'+str(iteration)+'_'+"{:.2f}".format(loss.numpy())
+            if not RUN_NUM:
+                CHECKPOINT_PATH += '+seed_'+str(arguments['seed'])
+                save_path = CHECKPOINT_PATH+'/'+str(iteration)+'_'+"{:.2f}".format(loss.numpy())
+            else:
+                run_path = 'run_'+str(RUN_NUM)+'+seed_'+str(arguments['seed'])
+                save_path = CHECKPOINT_PATH+'/'+ run_path +'/'+str(iteration)+'_'+"{:.2f}".format(loss.numpy())
             ca.save_weights(save_path)
             
             frames = []
