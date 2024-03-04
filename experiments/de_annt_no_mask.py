@@ -174,7 +174,8 @@ for i in range(arguments['iters']):
     
     old_pop, old_pop_rating = de.make_new_pop(old_pop,old_pop_rating,crossed_pop,crossed_pop_rating)
 
-    min_value = tf.reduce_min(old_pop_rating).numpy()
+    rating_list = [r.numpy() for r in old_pop_rating]
+    min_value = min(rating_list)
     
     A = min_value / lowest_loss
     F = 2*A*r
@@ -189,6 +190,8 @@ for i in range(arguments['iters']):
         else:
             run_path = 'run_'+str(RUN_NUM)+'+seed_'+str(arguments['seed'])
             save_path = CHECKPOINT_PATH+'/'+ run_path +'/'+str(i)+'_'+"{:.2f}".format(min_value)
+        
+        ca.set_weights(de.unflatten_tensor(old_pop[rating_list.index(min_value)],shapes))
         ca.save_weights(save_path)
 
         frames = []
