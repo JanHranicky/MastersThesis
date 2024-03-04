@@ -72,7 +72,7 @@ height,width = gt_img.size
 gt_tf = utils.img_to_discrete_space_tf(gt_img,arguments['states'],COMPARE_CHANNELS)
 model_name = "{}+{}+{}+channels_{}+iters_{}+states_{}+train_interval_{}+std_dev_{}+pop_size_{}+diff_weight_{}+cross_prob_{}".format(
     date_time,
-    "mse_loss",
+    "de_annt_mse_loss",
     GT_IMG_PATH.split('/')[-1].split('.')[0], #gt_img name
     arguments['channels'],
     arguments['iters'],
