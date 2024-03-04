@@ -50,7 +50,7 @@ def extract_weights_as_tensors(model):
 
 
 
-def generate_pop(original_tensor_list, N):
+def generate_pop(original_tensor_list, N, stddev):
     """
     Add noise to each element of the given list of TensorFlow tensors N times.
 
@@ -63,9 +63,98 @@ def generate_pop(original_tensor_list, N):
     """
 
     def add_noise_to_element(element):
-        noise = tf.random.normal(shape=tf.shape(element), mean=0.0, stddev=0.1, dtype=tf.float32)
+        noise = tf.random.normal(shape=tf.shape(element), mean=0.0, stddev=stddev, dtype=tf.float32)
         return element + noise
     pop = []
     for _ in range(N):
             pop.append(add_noise_to_element(original_tensor_list))    
     return pop
+
+
+def generate_unique_indices(num_tensors):
+    """Given the len of population and the index of current tensor returns three different indexees that will be used in the mixing algorithm
+
+    Args:
+        num_tensors (Int): size of the population
+        provided_index (Int): selected index
+
+    Raises:
+        ValueError: population size must be at least 4
+
+    Returns:
+        [Int]: list of selected indeces
+    """
+    # Check if num_tensors is greater than or equal to 4
+    if num_tensors < 4:
+        raise ValueError("Number of tensors should be at least 4 to generate three unique indices.")
+
+    indices = []
+    for i in range(num_tensors):
+        # Generate a list of all possible indices
+        all_indices = list(range(num_tensors))
+
+        # Remove the provided index from the list
+        all_indices.remove(i)
+
+        # Randomly shuffle the remaining indices
+        shuffled_indices = tf.random.shuffle(all_indices)
+
+        # Take the first three indices from the shuffled list
+        indices.append(shuffled_indices[:3].numpy())
+
+    return indices
+
+def mix_population(population, indices,F):
+    """Generates mixed population of the DE algorithm 
+        for each individual generates a mutant using formula
+        
+        vi,j:=xr1,j+F(xr2,j-xr3,j) 
+
+        where xr1,xr2 and xr3 are randomly selected individuals in the population
+    Args:
+        population ([tf.Tensor]): population of the DE algorithhm
+        indices ([[Int]]): list of trouples that index the indiviudals chosen for the mutation
+        F (float): control parameter of the algoritm. Control how strong is the mutation
+
+    Returns:
+        [tf.Tensor]: list of newly mutated tensors
+    """
+    mixed_pop = []
+    
+    for i in indices:
+        x1, x2, x3 = [population[index] for index in i]
+        v = x1 + F * (x2-x3)
+        
+        mixed_pop.append(v)
+        
+    return mixed_pop    
+
+
+def cross_over_pop(pop,mutated_pop, CR):
+    if len(pop) != len(mutated_pop):
+        raise ValueError("Both input lists should have the same length.")
+
+    mixed_tensors = []
+
+    for tensor1, tensor2 in zip(pop, mutated_pop):
+        # Generate random values in the range [0, 1)
+        random_values = tf.random.uniform(shape=tensor1.shape, minval=0.0, maxval=1.0)
+        # Use a threshold of 0.5 to choose elements from each tensor
+        mixed_tensor = tf.where(random_values < CR, tensor1, tensor2)
+        mixed_tensors.append(mixed_tensor)
+
+    return mixed_tensors
+
+
+def make_new_pop(pop, pop_ratings, crossed_pop, crossed_pop_rating):
+    new_pop = []
+    new_pop_rating = []
+    
+    for r1, r2, i1, i2 in zip(pop_ratings, crossed_pop_rating, pop, crossed_pop):
+        r1_better = r1 < r2
+        mixed_tensor = tf.where(r1_better, i1, i2)
+        
+        new_pop.append(mixed_tensor)
+        new_pop_rating.append(r1 if r1_better else r2)
+    
+    return new_pop, new_pop_rating
