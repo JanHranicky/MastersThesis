@@ -14,7 +14,6 @@ import sys
 import math
 import argparse
 from masks import vut_logo_mask,vut_logo_6x7_2px_padding_mask
-from skimage.metrics import structural_similarity as ssim
 
 def parse_int_tuple(arg):
     try:
@@ -86,7 +85,7 @@ model_name = "{}+{}+{}+channels_{}+iters_{}+states_{}+train_interval_{}+std_dev_
 )
 
 ca = output_modulo_model.CA(channel_n=arguments['channels'],model_name=model_name,states=arguments['states'])
-CHECKPOINT_PATH = f'./checkpoints/DE/'+ca.model_name
+CHECKPOINT_PATH = f'./checkpoints/DE/CONVERGENCE/'+ca.model_name
 RUN_NUM = arguments['run']
     
 def grayscale_to_rgb(grayscale_image):
@@ -137,26 +136,6 @@ def categorical_crossentropy_loss(y_true, y_pred):
     loss = tf.keras.losses.categorical_crossentropy(y_true, y_pred)
 
     return loss
-
-def calculate_ssim(tensor1, tensor2):
-    """
-    Calculate SSIM loss between two tensors.
-
-    Parameters:
-    - tensor1: numpy array, first input tensor
-    - tensor2: numpy array, second input tensor
-
-    Returns:
-    - ssim_value: float, SSIM loss between the two tensors
-    """
-    # Ensure that the tensors have the same shape and type
-    if tensor1.shape != tensor2.shape:
-        raise ValueError("Input tensors must have the same shape")
-
-    # Calculate SSIM
-    ssim_value = ssim(tensor1.numpy(), tensor2.numpy(),data_range=255)
-    
-    return ssim_value
 
 def cnt_loss(img,batch):
   l_x = utils.match_last_channel(batch,img)
@@ -209,6 +188,8 @@ old_pop = de.generate_pop(flat,arguments['pop_size'], arguments['std_dev'])
 old_pop_rating = objective_func(old_pop)
 A = 1.0
 
+min_losses = []
+
 for i in range(arguments['iters']):
     r = random.uniform(0, 1)
     
@@ -222,6 +203,7 @@ for i in range(arguments['iters']):
 
     rating_list = [r.numpy() for r in old_pop_rating]
     min_value = min(rating_list)
+    min_losses.append(min_value)
     
     A = min_value / lowest_loss
     F = 2*A*r
@@ -232,13 +214,17 @@ for i in range(arguments['iters']):
         print(f'new lowest loss found {lowest_loss}')
         if not RUN_NUM:
             path = CHECKPOINT_PATH + '+seed_'+str(arguments['seed'])
-            save_path = path+'/'+str(i)+'_'+"{:.2f}".format(min_value)
+            save_path = path
         else:
             run_path = 'run_'+str(RUN_NUM)+'+seed_'+str(arguments['seed'])
-            save_path = CHECKPOINT_PATH+'/'+ run_path +'/'+str(i)+'_'+"{:.2f}".format(min_value)
-            
+            save_path = CHECKPOINT_PATH+'/'+ run_path
+        weight_save_format = str(i)+'_'+"{:.2f}".format(min_value)
+        
         ca.set_weights(de.unflatten_tensor(old_pop[rating_list.index(min_value)],shapes))
-        ca.save_weights(save_path)
+        ca.save_weights(save_path+'/'+weight_save_format)
+        
+        np_min_losses = np.array(min_losses)
+        np.save(save_path+'/convergence_arr.npy', np_min_losses)
 
         frames = []
         x = utils.init_batch(1,width,height,arguments['channels'])
@@ -251,7 +237,7 @@ for i in range(arguments['iters']):
             f = Image.fromarray(np.uint8(f.numpy()),mode="L")
             frames.append(grayscale_to_rgb(f))
 
-        make_gif(save_path,frames)
+        make_gif(save_path+'/'+weight_save_format,frames)
         
     print('Iteration {}/{}. Lowest loss: {}. Current pop lowest loss {}. A={}, F={}, CR={}'.format(i,arguments['iters'],lowest_loss,min_value,A,F,CR))
     
