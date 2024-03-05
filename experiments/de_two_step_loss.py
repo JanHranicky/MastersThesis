@@ -38,6 +38,7 @@ def parse_arguments():
     parser.add_argument('-g', '--seed', type=int, help='Seed for generator', default=random.randint(0,sys.maxsize))
     parser.add_argument('-m', '--image', type=str, help='Path to GT image', default='./img/vut_logo_17x17_2px_padding.png')
     parser.add_argument('-r', '--run', type=int, help='Number of the run. If provided results will be stored in a subfolder', default=None)
+    parser.add_argument('-f', '--folder', type=str, help='Folder in which the reults will be stored', default='./checkpoints/DE/')
 
     # Parse the command line arguments
     args = parser.parse_args()
@@ -54,7 +55,8 @@ def parse_arguments():
         'cross_prob': args.cross_prob,
         'seed': args.seed,
         'image': args.image,
-        'run': args.run
+        'run': args.run,
+        'folder': args.folder,
     }
 
     return parameters
@@ -85,7 +87,7 @@ model_name = "{}+{}+{}+channels_{}+iters_{}+states_{}+train_interval_{}+std_dev_
 )
 
 ca = output_modulo_model.CA(channel_n=arguments['channels'],model_name=model_name,states=arguments['states'])
-CHECKPOINT_PATH = f'./checkpoints/DE/CONVERGENCE/'+ca.model_name
+CHECKPOINT_PATH = arguments['folder']+ca.model_name
 RUN_NUM = arguments['run']
     
 def grayscale_to_rgb(grayscale_image):
