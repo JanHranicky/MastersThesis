@@ -14,6 +14,7 @@ import sys
 import math
 import argparse
 from masks import vut_logo_mask,vut_logo_6x7_2px_padding_mask
+from timeit import default_timer as timer
 
 def parse_int_tuple(arg):
     try:
@@ -147,35 +148,40 @@ def cnt_loss(img,batch):
   diff = (l_x - img)
   diff_cnt = tf.math.count_nonzero(diff)
 
-  return diff_cnt.numpy()
+  return diff_cnt
 
 tf_weights = de.extract_weights_as_tensors(ca)
 
 lowest_loss = sys.maxsize
 
+@tf.function
+def evaluate_individual(gt_tf, ca, width, height, channel_n, train_interval):
+    x = utils.init_batch(1, width, height, channel_n)
+    total_iterations = tf.random.uniform([], train_interval[0], train_interval[1], tf.int32)
+    
+    loss = tf.constant(0, dtype=tf.int64)
+    for i in range(total_iterations):
+        x = ca(x)
+        if i == total_iterations - 2:
+            loss = cnt_loss(gt_tf, x)
+    
+    loss += cnt_loss(gt_tf, x)
+    return loss
+
 def objective_func(c):
-    #argument is a list of tensors with batch size being the size of population
+    start = timer()
     weights = [de.unflatten_tensor(i,shapes) for i in c]
     
-    #construct NN with these parameters and return lists of population size len with the value of objective function
     nn_scores = []
     for w in weights:
         ca.set_weights(w)
-        
-        x = utils.init_batch(1,width,height,ca.channel_n)
-        total_iterations = tf.random.uniform([], arguments['train_interval'][0], arguments['train_interval'][1], tf.int32)
-        for i in range(total_iterations):
-            x = ca(x)
-            if i == total_iterations - 2:
-                loss = cnt_loss(gt_tf,x)
-        #loss = categorical_crossentropy_loss(gt_tf,tf.squeeze(x, axis=0))
-        loss += cnt_loss(gt_tf,x)
-        #loss = mask_loss(gt_tf,x)
-        
-        nn_scores.append(loss)
+        nn_scores.append(evaluate_individual(gt_tf, ca, width, height, ca.channel_n, arguments['train_interval']))
     
     nn_scores = tf.convert_to_tensor(nn_scores)
     
+    end = timer()
+    
+    print(f'objective_func() exection took {end-start}s')
     return nn_scores    
 
 print('Starting algorithm')
@@ -193,6 +199,8 @@ A = 1.0
 min_losses = []
 
 for i in range(arguments['iters']):
+    iter_start = timer()
+    
     r = random.uniform(0, 1)
     
     indices = de.generate_unique_indices(arguments['pop_size'])
@@ -240,7 +248,9 @@ for i in range(arguments['iters']):
             frames.append(grayscale_to_rgb(f))
 
         make_gif(save_path+'/'+weight_save_format,frames)
-        
+    
+    iter_end = timer()
+    print(f'iteration execution took {iter_end-iter_start}s') 
     print('Iteration {}/{}. Lowest loss: {}. Current pop lowest loss {}. A={}, F={}, CR={}'.format(i,arguments['iters'],lowest_loss,min_value,A,F,CR))
     
         
