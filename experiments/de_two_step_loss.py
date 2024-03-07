@@ -15,6 +15,7 @@ import math
 import argparse
 from masks import vut_logo_mask,vut_logo_6x7_2px_padding_mask
 from timeit import default_timer as timer
+import ray
 
 def parse_int_tuple(arg):
     try:
@@ -62,35 +63,6 @@ def parse_arguments():
 
     return parameters
 
-arguments = parse_arguments()
-print(arguments)
-
-GT_IMG_PATH = arguments['image']
-date_time = datetime.now().strftime("%m_%d_%Y")
-gt_img = Image.open(GT_IMG_PATH)
-
-COMPARE_CHANNELS = 1
-
-height,width = gt_img.size
-gt_tf = utils.img_to_discrete_space_tf(gt_img,arguments['states'],COMPARE_CHANNELS)
-model_name = "{}+{}+{}+channels_{}+iters_{}+states_{}+train_interval_{}+std_dev_{}+pop_size_{}+diff_weight_{}+cross_prob_{}".format(
-    date_time,
-    "de_cnt_loss",
-    GT_IMG_PATH.split('/')[-1].split('.')[0], #gt_img name
-    arguments['channels'],
-    arguments['iters'],
-    arguments['states'],
-    arguments['train_interval'],
-    arguments['std_dev'],
-    arguments['pop_size'],
-    arguments['diff_weight'],
-    arguments['cross_prob']
-)
-
-ca = output_modulo_model.CA(channel_n=arguments['channels'],model_name=model_name,states=arguments['states'])
-CHECKPOINT_PATH = arguments['folder']+ca.model_name
-RUN_NUM = arguments['run']
-    
 def grayscale_to_rgb(grayscale_image):
     c_list = [(random.randint(0, 255),
                       random.randint(0, 255),
@@ -123,8 +95,6 @@ def custom_mse(x, gt):
     l_x = utils.match_last_channel(x,gt)
     return tf.reduce_mean(tf.square(l_x - gt))
 
-TRESHOLD = 1
-LOSS = arguments['states']
 
 def categorical_crossentropy_loss(y_true, y_pred):
     # Ensure the shapes are compatible
@@ -150,9 +120,6 @@ def cnt_loss(img,batch):
 
   return diff_cnt
 
-tf_weights = de.extract_weights_as_tensors(ca)
-
-lowest_loss = sys.maxsize
 
 @tf.function
 def evaluate_individual(gt_tf, ca, width, height, channel_n, train_interval):
@@ -168,90 +135,173 @@ def evaluate_individual(gt_tf, ca, width, height, channel_n, train_interval):
     loss += cnt_loss(gt_tf, x)
     return loss
 
-def objective_func(c):
+def process_individual(gt_tf, ca, w, width, height, channel_n, train_interval):
+    ca.set_weights(w)
+    return evaluate_individual(gt_tf, ca, width, height, channel_n, train_interval)
+
+
+def split_array(arr, num_processes):
+    # Calculate the number of elements each process should handle
+    elements_per_process = len(arr) // num_processes
+    remainder = len(arr) % num_processes
+
+    # Split the array into subarrays for each process
+    subarrays = []
+    start_idx = 0
+
+    for i in range(num_processes):
+        end_idx = start_idx + elements_per_process + (1 if i < remainder else 0)
+        subarrays.append(arr[start_idx:end_idx])
+        start_idx = end_idx
+
+    return subarrays
+
+def objective_func(c, evaluators):
     start = timer()
     weights = [de.unflatten_tensor(i,shapes) for i in c]
+        
+    splitted_weights = split_array(weights,len(evaluators))
+    results = ray.get([e.evaluate_pop_part.remote(w) for (w,e) in zip(splitted_weights,evaluators)])
     
-    nn_scores = []
-    for w in weights:
-        ca.set_weights(w)
-        nn_scores.append(evaluate_individual(gt_tf, ca, width, height, ca.channel_n, arguments['train_interval']))
-    
-    nn_scores = tf.convert_to_tensor(nn_scores)
+    combined = [item for sublist in results for item in sublist]
+    #nn_scores = tf.convert_to_tensor(nn_scores)
     
     end = timer()
-    
     print(f'objective_func() exection took {end-start}s')
-    return nn_scores    
+    return tf.convert_to_tensor(combined)    
 
-print('Starting algorithm')
+@ray.remote
+class CA_Evaluator(object):
+    def __init__(self, channels, model_name, states):
+        print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
+        self.model = output_modulo_model.CA(channel_n=channels,model_name=model_name,states=states)
 
-F = arguments['diff_weight']
-CR = arguments['cross_prob']
+    def set_weights(self,weights):
+        self.model.set_weights(weights)
 
-og_weights = ca.get_weights()
-flat,shapes = de.flatten_tensor(tf_weights)
-
-old_pop = de.generate_pop(flat,arguments['pop_size'], arguments['std_dev'])
-old_pop_rating = objective_func(old_pop)
-A = 1.0
-
-min_losses = []
-
-for i in range(arguments['iters']):
-    iter_start = timer()
-    
-    r = random.uniform(0, 1)
-    
-    indices = de.generate_unique_indices(arguments['pop_size'])
-    mixed_pop = de.mix_population(old_pop,indices,F)
-    
-    crossed_pop = de.cross_over_pop(old_pop,mixed_pop,CR)
-    crossed_pop_rating = objective_func(crossed_pop)
-    
-    old_pop, old_pop_rating = de.make_new_pop(old_pop,old_pop_rating,crossed_pop,crossed_pop_rating)
-
-    rating_list = [r.numpy() for r in old_pop_rating]
-    min_value = min(rating_list)
-    min_losses.append(min_value)
-    
-    A = min_value / lowest_loss
-    F = 2*A*r
-    CR = A*r
-    
-    if min_value < lowest_loss:
-        lowest_loss = min_value
-        print(f'new lowest loss found {lowest_loss}')
-        if not RUN_NUM:
-            path = CHECKPOINT_PATH + '+seed_'+str(arguments['seed'])
-            save_path = path
-        else:
-            run_path = 'run_'+str(RUN_NUM)+'+seed_'+str(arguments['seed'])
-            save_path = CHECKPOINT_PATH+'/'+ run_path
-        weight_save_format = str(i)+'_'+"{:.2f}".format(min_value)
+    def evaluate_pop_part(self,weights):
+        nn_scores = []
+        for w in weights:
+            self.set_weights(w)
+            nn_scores.append(evaluate_individual(gt_tf, self.model, width, height, self.model.channel_n, arguments['train_interval']))
         
-        ca.set_weights(de.unflatten_tensor(old_pop[rating_list.index(min_value)],shapes))
-        ca.save_weights(save_path+'/'+weight_save_format)
-        
-        np_min_losses = np.array(min_losses)
-        np.save(save_path+'/convergence_arr.npy', np_min_losses)
+        return nn_scores
 
-        frames = []
-        x = utils.init_batch(1,width,height,arguments['channels'])
-        for _ in range(arguments['train_interval'][1]):
-            x = ca(x)
 
-            f = tf.math.floormod(x,tf.ones_like(x,dtype=tf.float32)*arguments['states'])
-            f = tf.math.round(f)[0][:,:,0]
+if __name__ == '__main__':
+    arguments = parse_arguments()
+    print(f'Started Script with arguments: {arguments}')
+    print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
-            f = Image.fromarray(np.uint8(f.numpy()),mode="L")
-            frames.append(grayscale_to_rgb(f))
+    init_ray_start = timer()
+    ray.init(num_gpus=1)
+    init_ray_end = timer()
+    print(f'Initializing Ray took {init_ray_end - init_ray_start}')
 
-        make_gif(save_path+'/'+weight_save_format,frames)
+    GT_IMG_PATH = arguments['image']
+    date_time = datetime.now().strftime("%m_%d_%Y")
+    gt_img = Image.open(GT_IMG_PATH)
+
+    COMPARE_CHANNELS = 1
+
+    height,width = gt_img.size
+    gt_tf = utils.img_to_discrete_space_tf(gt_img,arguments['states'],COMPARE_CHANNELS)
+    model_name = "{}+{}+{}+channels_{}+iters_{}+states_{}+train_interval_{}+std_dev_{}+pop_size_{}+diff_weight_{}+cross_prob_{}".format(
+        date_time,
+        "de_cnt_loss",
+        GT_IMG_PATH.split('/')[-1].split('.')[0], #gt_img name
+        arguments['channels'],
+        arguments['iters'],
+        arguments['states'],
+        arguments['train_interval'],
+        arguments['std_dev'],
+        arguments['pop_size'],
+        arguments['diff_weight'],
+        arguments['cross_prob']
+    )
+    ca = output_modulo_model.CA(channel_n=arguments['channels'],model_name=model_name,states=arguments['states'])
     
-    iter_end = timer()
-    print(f'iteration execution took {iter_end-iter_start}s') 
-    print('Iteration {}/{}. Lowest loss: {}. Current pop lowest loss {}. A={}, F={}, CR={}'.format(i,arguments['iters'],lowest_loss,min_value,A,F,CR))
+    NUM_PROCESSES = 4
     
-        
+    copying_model_start = timer()
+    ca_evaluator_arr = [CA_Evaluator.remote(arguments['channels'], model_name, arguments['states']) for _ in  range(NUM_PROCESSES)]
+    copying_model_end = timer()
 
+    print(f'Creating models took {copying_model_end-copying_model_start}s')
+    
+    TRESHOLD = 1
+    LOSS = arguments['states']
+    CHECKPOINT_PATH = arguments['folder']+ca.model_name
+    RUN_NUM = arguments['run']
+    F = arguments['diff_weight']
+    CR = arguments['cross_prob']
+    
+    
+    lowest_loss = sys.maxsize
+    tf_weights = de.extract_weights_as_tensors(ca)
+    
+    print('Starting algorithm')
+
+    og_weights = ca.get_weights()
+    flat,shapes = de.flatten_tensor(tf_weights)
+
+    old_pop = de.generate_pop(flat,arguments['pop_size'], arguments['std_dev'])
+    old_pop_rating = objective_func(old_pop,ca_evaluator_arr)
+    A = 1.0
+
+    min_losses = []
+
+    for i in range(arguments['iters']):
+        iter_start = timer()
+        
+        r = random.uniform(0, 1)
+        
+        indices = de.generate_unique_indices(arguments['pop_size'])
+        mixed_pop = de.mix_population(old_pop,indices,F)
+        
+        crossed_pop = de.cross_over_pop(old_pop,mixed_pop,CR)
+        crossed_pop_rating = objective_func(crossed_pop,ca_evaluator_arr)
+        
+        old_pop, old_pop_rating = de.make_new_pop(old_pop,old_pop_rating,crossed_pop,crossed_pop_rating)
+
+        rating_list = [r.numpy() for r in old_pop_rating]
+        min_value = min(rating_list)
+        min_losses.append(min_value)
+        
+        A = min_value / lowest_loss
+        F = 2*A*r
+        CR = A*r
+        
+        if min_value < lowest_loss:
+            lowest_loss = min_value
+            print(f'new lowest loss found {lowest_loss}')
+            if not RUN_NUM:
+                path = CHECKPOINT_PATH + '+seed_'+str(arguments['seed'])
+                save_path = path
+            else:
+                run_path = 'run_'+str(RUN_NUM)+'+seed_'+str(arguments['seed'])
+                save_path = CHECKPOINT_PATH+'/'+ run_path
+            weight_save_format = str(i)+'_'+"{:.2f}".format(min_value)
+            
+            ca.set_weights(de.unflatten_tensor(old_pop[rating_list.index(min_value)],shapes))
+            ca.save_weights(save_path+'/'+weight_save_format)
+            
+            np_min_losses = np.array(min_losses)
+            np.save(save_path+'/convergence_arr.npy', np_min_losses)
+
+            frames = []
+            x = utils.init_batch(1,width,height,arguments['channels'])
+            for _ in range(arguments['train_interval'][1]):
+                x = ca(x)
+
+                f = tf.math.floormod(x,tf.ones_like(x,dtype=tf.float32)*arguments['states'])
+                f = tf.math.round(f)[0][:,:,0]
+
+                f = Image.fromarray(np.uint8(f.numpy()),mode="L")
+                frames.append(grayscale_to_rgb(f))
+
+            make_gif(save_path+'/'+weight_save_format,frames)
+        
+        iter_end = timer()
+        print(f'iteration execution took {iter_end-iter_start}s') 
+        print('Iteration {}/{}. Lowest loss: {}. Current pop lowest loss {}. A={}, F={}, CR={}'.format(i,arguments['iters'],lowest_loss,min_value,A,F,CR))
