@@ -1,4 +1,5 @@
 import tensorflow as tf
+from timeit import default_timer as timer
 
 def flatten_tensor(tl):
     """Flattens tensor list into a single tensor. Returns list of original shapes for the purpose of transforming the tensors back
@@ -65,9 +66,12 @@ def generate_pop(original_tensor_list, N, stddev):
     def add_noise_to_element(element):
         noise = tf.random.normal(shape=tf.shape(element), mean=0.0, stddev=stddev, dtype=tf.float32)
         return element + noise
+    start = timer()
     pop = []
     for _ in range(N):
             pop.append(add_noise_to_element(original_tensor_list))    
+    end = timer()
+    print(f'generate_pop() execution took {end - start}s')
     return pop
 
 
