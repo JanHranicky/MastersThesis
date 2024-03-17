@@ -162,3 +162,22 @@ def make_new_pop(pop, pop_ratings, crossed_pop, crossed_pop_rating):
         new_pop_rating.append(r1 if r1_better else r2)
     
     return new_pop, new_pop_rating
+
+
+def make_new_pop_with_sucess_rate(pop, pop_ratings, crossed_pop, crossed_pop_rating):
+    new_pop = []
+    new_pop_rating = []
+    
+    pop_len = len(crossed_pop)
+    mutation_sucess_rate = 0
+    
+    for r1, r2, i1, i2 in zip(pop_ratings, crossed_pop_rating, pop, crossed_pop):
+        r1_better = r1 < r2
+        if not r1_better:
+            mutation_sucess_rate += 1
+        mixed_tensor = tf.where(r1_better, i1, i2)
+        
+        new_pop.append(mixed_tensor)
+        new_pop_rating.append(r1 if r1_better else r2)
+    
+    return new_pop, new_pop_rating, mutation_sucess_rate/pop_len

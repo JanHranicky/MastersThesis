@@ -69,7 +69,7 @@ COMPARE_CHANNELS = 1
 
 height,width = gt_img.size
 gt_tf = utils.img_to_discrete_space_tf(gt_img,arguments['states'],COMPARE_CHANNELS)
-model_name = "{}+{}+{}+channels_{}+iters_{}+states_{}+train_interval_{}+std_dev_{}+pop_size_{}+diff_weight_{}+cross_prob_{}".format(
+model_name = "{}+{}+{}+channels_{}+iters_{}+states_{}+train_interval_{}+std_dev_{}+pop_size_{}+diff_weight_{}+f_gen_num{}+f_multiplier_{}".format(
     date_time,
     "de_cnt_loss",
     GT_IMG_PATH.split('/')[-1].split('.')[0], #gt_img name
@@ -80,7 +80,8 @@ model_name = "{}+{}+{}+channels_{}+iters_{}+states_{}+train_interval_{}+std_dev_
     arguments['std_dev'],
     arguments['pop_size'],
     arguments['diff_weight'],
-    arguments['cross_prob']
+    arguments['f_gen_num'],
+    arguments['f_multiplier']
 )
 
 ca = output_modulo_model.CA(channel_n=arguments['channels'],model_name=model_name,states=arguments['states'])
