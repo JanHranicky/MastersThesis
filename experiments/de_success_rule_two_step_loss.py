@@ -185,7 +185,9 @@ print('Starting algorithm')
 
 F = arguments['diff_weight']
 CR = arguments['cross_prob']
+
 SUCESS_RULE_THRESHOLD = 0.2
+MAX_F = 3.0
 
 og_weights = ca.get_weights()
 flat,shapes = de.flatten_tensor(tf_weights)
@@ -252,6 +254,7 @@ for i in range(arguments['iters']):
         print(f'Adjusting F: with mutation_rates = {mutation_rates}')
         if mutation_rates > SUCESS_RULE_THRESHOLD:
             F = F*arguments['f_multiplier']
+            F = min(MAX_F,F)
         elif mutation_rates < SUCESS_RULE_THRESHOLD:
             F = F/arguments['f_multiplier']
         
