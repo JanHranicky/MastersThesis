@@ -252,11 +252,11 @@ for i in range(arguments['iters']):
     if i != 0 and i%arguments['f_gen_num'] == 0:
         mutation_rates = mutation_rates / arguments['f_gen_num']
         print(f'Adjusting F: with mutation_rates = {mutation_rates}')
-        if mutation_rates > SUCESS_RULE_THRESHOLD:
+        if mutation_rates < SUCESS_RULE_THRESHOLD:
             F = F*arguments['f_multiplier']
-            F = min(MAX_F,F)
-        elif mutation_rates < SUCESS_RULE_THRESHOLD:
+        elif mutation_rates > SUCESS_RULE_THRESHOLD:
             F = F/arguments['f_multiplier']
+            F = min(MAX_F,F)
         
         mutation_rates = 0
         
