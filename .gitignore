@@ -1,3 +1,5 @@
 checkpoints/
+training_scripts/
 __pycache__/
 datasets/
+*.png

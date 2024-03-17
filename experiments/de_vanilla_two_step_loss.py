@@ -1,19 +1,12 @@
-from core import model,utils,trainer,output_modulo_model, de
+from core import utils,output_modulo_model, de
 import tensorflow as tf
-import tensorflow_probability as tfp
-from PIL import Image,ImageOps
-from IPython.display import clear_output,display
+from PIL import Image
 import numpy as np 
 import os
-import IPython.display as display
-from matplotlib import pyplot as plt
-import pathlib
 from datetime import datetime
 import random
 import sys 
-import math
 import argparse
-from masks import vut_logo_mask,vut_logo_6x7_2px_padding_mask
 from timeit import default_timer as timer
 import ray
 
@@ -194,7 +187,7 @@ if __name__ == '__main__':
     print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
     init_ray_start = timer()
-    ray.init(num_gpus=1)
+    ray.init(_temp_dir='/storage/praha1/home/xhrani02/tmp')
     init_ray_end = timer()
     print(f'Initializing Ray took {init_ray_end - init_ray_start}')
 
