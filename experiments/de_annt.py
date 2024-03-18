@@ -1,19 +1,12 @@
-from core import model,utils,trainer,output_modulo_model, de
+from core import utils,output_modulo_model, de
 import tensorflow as tf
-import tensorflow_probability as tfp
-from PIL import Image,ImageOps
-from IPython.display import clear_output,display
+from PIL import Image
 import numpy as np 
-import os
-import IPython.display as display
-from matplotlib import pyplot as plt
-import pathlib
 from datetime import datetime
 import random
 import sys 
-import math
 import argparse
-from masks import vut_logo_mask,vut_logo_6x7_2px_padding_mask
+from timeit import default_timer as timer
 
 def parse_int_tuple(arg):
     try:
@@ -38,6 +31,7 @@ def parse_arguments():
     parser.add_argument('-g', '--seed', type=int, help='Seed for generator', default=random.randint(0,sys.maxsize))
     parser.add_argument('-m', '--image', type=str, help='Path to GT image', default='./img/vut_logo_17x17_2px_padding.png')
     parser.add_argument('-r', '--run', type=int, help='Number of the run. If provided results will be stored in a subfolder', default=None)
+    parser.add_argument('-f', '--folder', type=str, help='Folder in which the reults will be stored', default='./checkpoints/DE/')
 
     # Parse the command line arguments
     args = parser.parse_args()
@@ -54,7 +48,8 @@ def parse_arguments():
         'cross_prob': args.cross_prob,
         'seed': args.seed,
         'image': args.image,
-        'run': args.run
+        'run': args.run,
+        'folder': args.folder,
     }
 
     return parameters
@@ -72,7 +67,7 @@ height,width = gt_img.size
 gt_tf = utils.img_to_discrete_space_tf(gt_img,arguments['states'],COMPARE_CHANNELS)
 model_name = "{}+{}+{}+channels_{}+iters_{}+states_{}+train_interval_{}+std_dev_{}+pop_size_{}+diff_weight_{}+cross_prob_{}".format(
     date_time,
-    "de_annt_mask_loss",
+    "de_cnt_loss",
     GT_IMG_PATH.split('/')[-1].split('.')[0], #gt_img name
     arguments['channels'],
     arguments['iters'],
@@ -85,7 +80,7 @@ model_name = "{}+{}+{}+channels_{}+iters_{}+states_{}+train_interval_{}+std_dev_
 )
 
 ca = output_modulo_model.CA(channel_n=arguments['channels'],model_name=model_name,states=arguments['states'])
-CHECKPOINT_PATH = f'./checkpoints/DE/'+ca.model_name
+CHECKPOINT_PATH = arguments['folder']+ca.model_name
 RUN_NUM = arguments['run']
     
 def grayscale_to_rgb(grayscale_image):
@@ -123,46 +118,62 @@ def custom_mse(x, gt):
 TRESHOLD = 1
 LOSS = arguments['states']
 
-def mask_loss(img,batch):
+def categorical_crossentropy_loss(y_true, y_pred):
+    # Ensure the shapes are compatible
+    assert y_true.shape == y_pred.shape, "Shape mismatch between y_true and y_pred"
+
+    # Reshape y_true and y_pred if needed
+    if len(y_true.shape) == 4:  # If the batch dimension is present
+        y_true = tf.squeeze(y_true, axis=[3])  # Remove the last axis (channel)
+        y_pred = tf.squeeze(y_pred, axis=[3])
+
+    # Compute categorical crossentropy loss
+    loss = tf.keras.losses.categorical_crossentropy(y_true, y_pred)
+
+    return loss
+
+def cnt_loss(img,batch):
   l_x = utils.match_last_channel(batch,img)
   
   img = tf.cast(img,dtype=tf.float32)
 
-  diff = (l_x - img)**2
-  diff = tf.reduce_mean(diff,axis=-1)
-  
-  bckdn = vut_logo_6x7_2px_padding_mask.background_mask * diff
-  logo = vut_logo_6x7_2px_padding_mask.logo_mask * diff
-  
-  more_mask = tf.greater(logo, 0.0 * tf.ones_like(logo))
-  less_indices = tf.where(more_mask)
-  less_indices_cnt = less_indices.shape[0]
-  if less_indices_cnt is not None:
-    logo = tf.tensor_scatter_nd_update(logo,less_indices,(tf.ones(shape=(less_indices.shape[0],)) * 7) )
-  return tf.reduce_mean(bckdn+logo)
+  diff = (l_x - img)
+  diff_cnt = tf.math.count_nonzero(diff)
+
+  return diff_cnt
 
 tf_weights = de.extract_weights_as_tensors(ca)
 
 lowest_loss = sys.maxsize
 
+@tf.function
+def evaluate_individual(gt_tf, ca, width, height, channel_n, train_interval):
+    x = utils.init_batch(1, width, height, channel_n)
+    total_iterations = tf.random.uniform([], train_interval[0], train_interval[1], tf.int32)
+    
+    loss = tf.constant(0, dtype=tf.int64)
+    for i in range(total_iterations):
+        x = ca(x)
+        if i == total_iterations - 2:
+            loss = cnt_loss(gt_tf, x)
+    
+    loss += cnt_loss(gt_tf, x)
+    return loss
+
 def objective_func(c):
-    #argument is a list of tensors with batch size being the size of population
+    start = timer()
     weights = [de.unflatten_tensor(i,shapes) for i in c]
     
-    #construct NN with these parameters and return lists of population size len with the value of objective function
     nn_scores = []
     for w in weights:
         ca.set_weights(w)
-        
-        x = utils.init_batch(1,width,height,ca.channel_n)
-        for _ in range(tf.random.uniform([], arguments['train_interval'][0], arguments['train_interval'][1], tf.int32)):
-            x = ca(x)
-        loss = mask_loss(gt_tf,x)
-        
-        nn_scores.append(loss.numpy())
+        nn_scores.append(evaluate_individual(gt_tf, ca, width, height, ca.channel_n, arguments['train_interval']))
     
     nn_scores = tf.convert_to_tensor(nn_scores)
     
+    end = timer()
+    
+    print(f'objective_func() exection took {end-start}s')
     return nn_scores    
 
 print('Starting algorithm')
@@ -177,7 +188,11 @@ old_pop = de.generate_pop(flat,arguments['pop_size'], arguments['std_dev'])
 old_pop_rating = objective_func(old_pop)
 A = 1.0
 
+min_losses = []
+
 for i in range(arguments['iters']):
+    iter_start = timer()
+    
     r = random.uniform(0, 1)
     
     indices = de.generate_unique_indices(arguments['pop_size'])
@@ -190,8 +205,10 @@ for i in range(arguments['iters']):
 
     rating_list = [r.numpy() for r in old_pop_rating]
     min_value = min(rating_list)
+    min_losses.append(min_value)
     
     A = min_value / lowest_loss
+    
     F = 2*A*r
     CR = A*r
     
@@ -200,13 +217,17 @@ for i in range(arguments['iters']):
         print(f'new lowest loss found {lowest_loss}')
         if not RUN_NUM:
             path = CHECKPOINT_PATH + '+seed_'+str(arguments['seed'])
-            save_path = path+'/'+str(i)+'_'+"{:.2f}".format(min_value)
+            save_path = path
         else:
             run_path = 'run_'+str(RUN_NUM)+'+seed_'+str(arguments['seed'])
-            save_path = CHECKPOINT_PATH+'/'+ run_path +'/'+str(i)+'_'+"{:.2f}".format(min_value)
-            
+            save_path = CHECKPOINT_PATH+'/'+ run_path
+        weight_save_format = str(i)+'_'+"{:.2f}".format(min_value)
+        
         ca.set_weights(de.unflatten_tensor(old_pop[rating_list.index(min_value)],shapes))
-        ca.save_weights(save_path)
+        ca.save_weights(save_path+'/'+weight_save_format)
+        
+        np_min_losses = np.array(min_losses)
+        np.save(save_path+'/convergence_arr.npy', np_min_losses)
 
         frames = []
         x = utils.init_batch(1,width,height,arguments['channels'])
@@ -219,9 +240,10 @@ for i in range(arguments['iters']):
             f = Image.fromarray(np.uint8(f.numpy()),mode="L")
             frames.append(grayscale_to_rgb(f))
 
-        make_gif(save_path,frames)
-        
+        make_gif(save_path+'/'+weight_save_format,frames)
+    
+    iter_end = timer()
+    print(f'iteration execution took {iter_end-iter_start}s') 
     print('Iteration {}/{}. Lowest loss: {}. Current pop lowest loss {}. A={}, F={}, CR={}'.format(i,arguments['iters'],lowest_loss,min_value,A,F,CR))
     
         
-
