@@ -3,6 +3,7 @@ import argparse
 import numpy as np
 from PIL import Image
 import multiprocessing
+import os
 
 def parse_int_tuple(arg):
     try:
@@ -19,6 +20,7 @@ def parse_arguments():
     parser.add_argument('-i', '--image', type=str, help='Path to the input image', required=True)
     parser.add_argument('-s', '--states', type=int, help='Number of states', default=8)
     parser.add_argument('-t', '--train_interval', type=parse_int_tuple, help='Train interval of the network', default=(20,30))
+    parser.add_argument('-r', '--run', type=int, help='Number of the run', required=True)
 
     return parser.parse_args()
 
@@ -109,11 +111,11 @@ def run_neat():
     p.add_reporter(neat.StdOutReporter(True))
     stats = neat.StatisticsReporter()
     p.add_reporter(stats)
-    p.add_reporter(neat.Checkpointer(1000))
+    p.add_reporter(neat.Checkpointer(10000,filename_prefix=SAVE_PATH+'/neat-checkpoint_'))
     
     #winner = p.run(loss_func, 300)
     pe = neat.ParallelEvaluator(multiprocessing.cpu_count(), loss_func)
-    winner = p.run(pe.evaluate, 50)
+    winner = p.run(pe.evaluate, 100000)
     
     print(f'Printing winner:')
     print(winner)
@@ -143,8 +145,12 @@ image = load_image(arguments.image)
 gt_np = img_to_discrete_np(image,arguments.states)
 
 config = load_config(arguments.config)
+SAVE_PATH = './checkpoints/Neat/Run_'+str(arguments.run)
 
 if __name__ == '__main__':
+    if not os.path.exists(SAVE_PATH):
+        os.mkdir(SAVE_PATH)
+    
     run_neat()
     
     
