@@ -1,5 +1,7 @@
 import tensorflow as tf
 from timeit import default_timer as timer
+import random 
+import numpy as np
 
 def flatten_tensor(tl):
     """Flattens tensor list into a single tensor. Returns list of original shapes for the purpose of transforming the tensors back
@@ -181,3 +183,146 @@ def make_new_pop_with_sucess_rate(pop, pop_ratings, crossed_pop, crossed_pop_rat
         new_pop_rating.append(r1 if r1_better else r2)
     
     return new_pop, new_pop_rating, mutation_sucess_rate/pop_len
+
+
+class Archive:
+    def __init__(self, length):
+        self.length = length
+        self.data = [(0.5,0.5)] * length
+        self.current_index = 0
+
+    def add(self, value):
+        self.data[self.current_index] = value
+        self.current_index = (self.current_index + 1) % self.length
+
+    def get(self,index):
+        if index > self.length - 1:
+            raise "Index out of range"
+        return self.data[index]
+    
+    def get_random(self):
+        i = random.randint(0,self.length-1)
+        return self.data[i]
+
+    def __str__(self):
+        str_data = ""
+        for i in range(self.length):
+            str_data += str(self.get(i)) + ", "
+        
+        return str_data
+
+def generate_control_parameters(pop_size,archive):
+    c_parameter_list = []
+    
+    for i in range(pop_size):
+        m_f, m_cr = archive.get_random()
+
+        g_cr = 0.1 * np.random.randn() + m_cr
+        g_cr = max(0,min(1,g_cr))
+        
+        
+        g_f = 0.1 * np.random.standard_cauchy() + m_f
+        while g_f <= 0: #in case negative value was generated 
+            g_f = 0.1 * np.random.standard_cauchy() + m_f
+        g_f = min(1,g_f) #truncate to be maximum of 1 
+        
+        c_parameter_list.append((g_f,g_cr))
+        
+    return c_parameter_list
+
+
+def top_n_indices(fitness_values, n):
+    """
+    Returns the indices of the top N best individuals based on fitness values.
+    
+    Parameters:
+        fitness_values (numpy.ndarray): Array containing fitness values of individuals.
+        n (int): Number of top individuals to select.
+        
+    Returns:
+        numpy.ndarray: Array of indices corresponding to the top N best individuals.
+    """
+    sorted_indices = np.argsort(fitness_values)
+    top_n = sorted_indices[:n]  # Select top N indices
+    return top_n
+
+def generate_top_n_indiduals(fitness_values):
+    """Chooses best individuals for the current-to-pbest mutation operator
+
+    Args:
+        fitness_values ([Number]): list of fitness values
+
+    Returns:
+        [Int]: index of chosed individuals for mutation operator
+    """
+    P_MAX = 0.2
+    P_MIN = 2 / len(fitness_values)
+    
+    pop_size = len(fitness_values)
+    num_min = int(pop_size * P_MIN)
+    num_max = int(pop_size * P_MAX)
+    
+    fitness_sorted_pop = np.argsort(fitness_values)
+    
+    best_individuals = []
+    for _ in range(pop_size):
+        p_best = int(random.uniform(num_min,num_max))
+        best_individuals.append(random.choice(fitness_sorted_pop[:p_best]))
+        
+    return best_individuals
+
+def current_to_pbest_mutation(population, indices, parameters, p_best):
+    trial_vectors = []
+    for i,p,pb in zip(indices,parameters,p_best):
+        x1, x2, x3 = [population[index] for index in i]
+        f_i = float(p[0])
+        x_p = population[pb]
+        
+        v_i = x1 + f_i * (x_p - x1) + f_i * (x2 - x3)
+        
+        # Generate random values in the range [0, 1)
+        
+        random_values = tf.random.uniform(shape=x1.shape, minval=0.0, maxval=1.0)
+        D_tensor = tf.tensor_scatter_nd_update(tf.cast(tf.zeros_like(x1),dtype=tf.bool), [[random.randint(0,x1.shape[0]-1)]], [True]) #tensor with all False values except single random position being True
+        cr_mask = tf.cast(tf.logical_or(random_values <= p[1], D_tensor), tf.float32) #mask combining single random position and CR mask
+
+        crossed_trial_vector = (v_i * cr_mask) + (x1 * (1 - cr_mask)) #take elements from trial vector v_i where mask is 1.0 and from donor vector x1 where mask is 0.0
+        
+        trial_vectors.append(crossed_trial_vector)
+        
+    return trial_vectors
+
+
+def shade_new_pop(pop, pop_ratings, crossed_pop, crossed_pop_rating):
+    new_pop = []
+    new_pop_rating = []
+    better_mutants = []
+    for i, r1, r2, i1, i2 in zip(range(len(pop)),pop_ratings, crossed_pop_rating, pop, crossed_pop):
+        r1_better = r1 < r2
+        
+        new_pop.append(i1 if r1_better else i2)
+        new_pop_rating.append(r1 if r1_better else r2)
+        if not r1_better:
+            better_mutants.append(i)
+    
+    return new_pop, new_pop_rating, better_mutants
+    
+def mean_wl_f(old_fitness,new_fitness,better_mutant_indices,c_parameters):
+    fitness_diff_arr = [tf.math.abs(old_fitness[bm] - new_fitness[bm]) for bm in better_mutant_indices]
+    weight_sum = tf.reduce_sum(fitness_diff_arr)
+    weights = [f/weight_sum for f in fitness_diff_arr]
+    
+    top = [w*c_parameters[i][0]**2 for (w,i) in zip(weights,better_mutant_indices)]
+    bot = [w*c_parameters[i][0] for (w,i) in zip(weights,better_mutant_indices)]
+    
+    return tf.reduce_sum(top)/tf.reduce_sum(bot)
+    
+def mean_wa_cr(old_fitness,new_fitness,better_mutant_indices,c_parameters):
+    fitness_diff_arr = [tf.math.abs(old_fitness[bm] - new_fitness[bm]) for bm in better_mutant_indices]
+    weight_sum = tf.reduce_sum(fitness_diff_arr)
+    weights = [f/weight_sum for f in fitness_diff_arr]
+    
+    products = [w*c_parameters[i][0]**2 for (w,i) in zip(weights,better_mutant_indices)]
+    
+    return tf.reduce_sum(products)
+    
