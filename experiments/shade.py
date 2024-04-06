@@ -143,6 +143,11 @@ def objective_func(c):
     print(f'objective_func() exection took {end-start}s')
     return nn_scores    
 
+def handle_nan_value(new_val):
+    if tf.math.is_nan(new_val):
+        return tf.constant(0.5)
+    return new_val
+
 print('Starting algorithm')
 P_MIN = 2 / arguments.pop_size
 F = arguments.diff_weight
@@ -175,9 +180,8 @@ for i in range(arguments.iters):
     new_pop, new_pop_rating, better_mutants = de.shade_new_pop(old_pop,old_pop_rating,mixed_pop,mixed_pop_rating)
     
     if better_mutants:
-        new_f = de.mean_wl_f(old_pop_rating,mixed_pop_rating,better_mutants,c_parameters)
-        new_cr = de.mean_wa_cr(old_pop_rating,mixed_pop_rating,better_mutants,c_parameters)
-        
+        new_f = handle_nan_value(de.mean_wl_f(old_pop_rating,mixed_pop_rating,better_mutants,c_parameters))
+        new_cr = handle_nan_value(de.mean_wa_cr(old_pop_rating,mixed_pop_rating,better_mutants,c_parameters))
         archive.add((new_f,new_cr))
 
     #set the new population
