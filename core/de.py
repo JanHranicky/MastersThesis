@@ -191,8 +191,19 @@ class Archive:
         self.data = [(0.5,0.5)] * length
         self.current_index = 0
 
+    def replace_none(self,old_value,new_value):
+        if new_value is None:
+            return old_value
+        return new_value
+
     def add(self, value):
-        self.data[self.current_index] = value
+        old_f,old_cr = self.data[self.current_index]
+        new_f,new_cr = value
+            
+        new_f = self.replace_none(old_f,new_f)
+        new_cr = self.replace_none(old_cr,new_cr)
+        
+        self.data[self.current_index] = (new_f, new_cr)
         self.current_index = (self.current_index + 1) % self.length
 
     def get(self,index):
@@ -207,6 +218,7 @@ class Archive:
     def __str__(self):
         str_data = ""
         for i in range(self.length):
+            data = self.get(i)
             str_data += str(self.get(i)) + ", "
         
         return str_data
@@ -216,7 +228,6 @@ def generate_control_parameters(pop_size,archive):
     
     for i in range(pop_size):
         m_f, m_cr = archive.get_random()
-
         g_cr = 0.1 * np.random.randn() + m_cr
         g_cr = max(0,min(1,g_cr))
         
@@ -271,7 +282,21 @@ def generate_top_n_indiduals(fitness_values):
         
     return best_individuals
 
-def current_to_pbest_mutation(population, indices, parameters, p_best):
+def binomial_crossover(trial,donor, cr_rate):
+    random_values = tf.random.uniform(shape=donor.shape, minval=0.0, maxval=1.0)
+    D_tensor = tf.tensor_scatter_nd_update(tf.cast(tf.zeros_like(donor),dtype=tf.bool), [[random.randint(0,donor.shape[0]-1)]], [True]) #tensor with all False values except single random position being True
+    cr_mask = tf.cast(tf.logical_or(random_values <= cr_rate, D_tensor), tf.float32) #mask combining single random position and CR mask
+
+    crossed_trial_vector = (trial * cr_mask) + (donor * (1 - cr_mask)) #take elements from trial vector v_i where mask is 1.0 and from donor vector x1 where mask is 0.0
+    
+    return crossed_trial_vector
+
+def interm_crossover(trial,donor):
+    a = tf.random.uniform(shape=donor.shape, minval=0.0, maxval=1.0)
+
+    return a*trial + (1-a)*donor
+
+def current_to_pbest_mutation(population, indices, parameters, p_best, cross_operator):
     trial_vectors = []
     for i,p,pb in zip(indices,parameters,p_best):
         x1, x2, x3 = [population[index] for index in i]
@@ -280,13 +305,10 @@ def current_to_pbest_mutation(population, indices, parameters, p_best):
         
         v_i = x1 + f_i * (x_p - x1) + f_i * (x2 - x3)
         
-        # Generate random values in the range [0, 1)
-        
-        random_values = tf.random.uniform(shape=x1.shape, minval=0.0, maxval=1.0)
-        D_tensor = tf.tensor_scatter_nd_update(tf.cast(tf.zeros_like(x1),dtype=tf.bool), [[random.randint(0,x1.shape[0]-1)]], [True]) #tensor with all False values except single random position being True
-        cr_mask = tf.cast(tf.logical_or(random_values <= p[1], D_tensor), tf.float32) #mask combining single random position and CR mask
-
-        crossed_trial_vector = (v_i * cr_mask) + (x1 * (1 - cr_mask)) #take elements from trial vector v_i where mask is 1.0 and from donor vector x1 where mask is 0.0
+        if cross_operator == "interm":
+            crossed_trial_vector = interm_crossover(v_i,x1)
+        else:
+            crossed_trial_vector = binomial_crossover(v_i,x1,p[1])
         
         trial_vectors.append(crossed_trial_vector)
         
@@ -310,8 +332,10 @@ def shade_new_pop(pop, pop_ratings, crossed_pop, crossed_pop_rating):
 def mean_wl_f(old_fitness,new_fitness,better_mutant_indices,c_parameters):
     fitness_diff_arr = [tf.math.abs(old_fitness[bm] - new_fitness[bm]) for bm in better_mutant_indices]
     weight_sum = tf.reduce_sum(fitness_diff_arr)
-    weights = [f/weight_sum for f in fitness_diff_arr]
+    if weight_sum == 0: #0 in case only one mutant was better and had exactly the same fitness as its parent
+        return None
     
+    weights = [f/weight_sum for f in fitness_diff_arr]
     top = [w*c_parameters[i][0]**2 for (w,i) in zip(weights,better_mutant_indices)]
     bot = [w*c_parameters[i][0] for (w,i) in zip(weights,better_mutant_indices)]
     
@@ -320,6 +344,9 @@ def mean_wl_f(old_fitness,new_fitness,better_mutant_indices,c_parameters):
 def mean_wa_cr(old_fitness,new_fitness,better_mutant_indices,c_parameters):
     fitness_diff_arr = [tf.math.abs(old_fitness[bm] - new_fitness[bm]) for bm in better_mutant_indices]
     weight_sum = tf.reduce_sum(fitness_diff_arr)
+    if weight_sum == 0: #0 in case only one mutant was better and had exactly the same fitness as its parent
+        return None
+    
     weights = [f/weight_sum for f in fitness_diff_arr]
     
     products = [w*c_parameters[i][0]**2 for (w,i) in zip(weights,better_mutant_indices)]

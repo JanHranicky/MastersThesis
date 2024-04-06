@@ -27,8 +27,7 @@ def parse_arguments():
     parser.add_argument('-t', '--train_interval', type=parse_int_tuple, help='Train interval of the network', default=(20,30))
     parser.add_argument('-d', '--std_dev', type=float, help='Stddev used to generate initial population', default=0.02)
     parser.add_argument('-p', '--pop_size', type=int, help='size of the population', default=40)
-    parser.add_argument('-w', '--diff_weight', type=float, help='The parameter controlling the strength of mutation in the algorithm', default=0.5)
-    parser.add_argument('-x', '--cross_prob', type=float, help='The probability of recombination per site', default=0.5)
+    parser.add_argument('-x', '--cross_operator', type=str, help='Chosen crossoveroperator', default="binomial")
     parser.add_argument('-g', '--seed', type=int, help='Seed for generator', default=random.randint(0,sys.maxsize))
     parser.add_argument('-a', '--image', type=str, help='Path to GT image', default='./img/vut_logo_17x17_2px_padding.png')
     parser.add_argument('-r', '--run', type=int, help='Number of the run. If provided results will be stored in a subfolder', default=None)
@@ -145,13 +144,11 @@ def objective_func(c):
 
 def handle_nan_value(new_val):
     if tf.math.is_nan(new_val):
+        exit()
         return tf.constant(0.5)
     return new_val
 
 print('Starting algorithm')
-P_MIN = 2 / arguments.pop_size
-F = arguments.diff_weight
-CR = arguments.cross_prob
 
 og_weights = ca.get_weights()
 flat,shapes = de.flatten_tensor(tf_weights)
@@ -174,14 +171,15 @@ for i in range(arguments.iters):
     p_best_individuals = de.generate_top_n_indiduals(old_pop_rating)
     indices = de.generate_unique_indices(arguments.pop_size)
     
-    mixed_pop = de.current_to_pbest_mutation(old_pop,indices,c_parameters,p_best_individuals)
+    mixed_pop = de.current_to_pbest_mutation(old_pop,indices,c_parameters,p_best_individuals,arguments.cross_operator)
     mixed_pop_rating = objective_func(mixed_pop)
     
     new_pop, new_pop_rating, better_mutants = de.shade_new_pop(old_pop,old_pop_rating,mixed_pop,mixed_pop_rating)
     
     if better_mutants:
-        new_f = handle_nan_value(de.mean_wl_f(old_pop_rating,mixed_pop_rating,better_mutants,c_parameters))
-        new_cr = handle_nan_value(de.mean_wa_cr(old_pop_rating,mixed_pop_rating,better_mutants,c_parameters))
+        new_f = de.mean_wl_f(old_pop_rating,mixed_pop_rating,better_mutants,c_parameters)
+        new_cr = de.mean_wa_cr(old_pop_rating,mixed_pop_rating,better_mutants,c_parameters)
+        
         archive.add((new_f,new_cr))
 
     #set the new population
