@@ -19,7 +19,7 @@ def parse_arguments():
     parser.add_argument('-t', '--train_interval', type=utils.parse_int_tuple, help='Train interval of the network', default=(20,30))
     parser.add_argument('-m', '--image', type=str, help='Path to GT image', default='./img/vut_logo_17x17_2px_padding.png')
     parser.add_argument('-r', '--run', type=int, help='Number of the run. If provided results will be stored in a subfolder', default=None)
-    parser.add_argument('-f', '--folder', type=str, help='Folder in which the reults will be stored', default='./checkpoints/DE/')
+    parser.add_argument('-f', '--folder', type=str, help='Folder in which the reults will be stored', default='./checkpoints/DNCA/')
 
     return parser.parse_args()
 
@@ -39,7 +39,8 @@ class DncaTrainer():
                save_iters=5000,
                generate_gif_iters=5000,
                train_step_interval=(75,100),
-               run=None
+               run=None,
+               folder='./checkpoints/'
                ):
     self.batch_size = batch_size
     self.state_num = state_num
@@ -63,7 +64,7 @@ class DncaTrainer():
     if self.data_pool_training:
       self.dp = data_pool.DataPool(self.width,self.height,self.model.channel_n) 
       
-    self.checkpoint_path = f'./checkpoints/{self.model.model_name}_{self.gt_img_name}'
+    self.checkpoint_path = f'{folder}{self.model.model_name}_{self.gt_img_name}'
     if run:
         run_path = 'run_'+str(run)
         self.checkpoint_path = self.checkpoint_path+'/'+ run_path
@@ -121,11 +122,9 @@ class DncaTrainer():
         x0 = utils.init_batch(self.batch_size,width,height,self.model.channel_n)
         
       x, loss, last_iter = self.train_step(x0,trainer)
-        
+      
       if loss.numpy() == 0:
-        self.model.save_weights(self.checkpoint_path+'/solution_'+str(i))
-        self.model.save(self.checkpoint_path+'/solution_'+str(i)+'.keras')
-        
+        self.save_progress(i,loss_values,True)
         self.generate_gif(self.save_iters,width,height,last_iter,True)
         exit()
           
@@ -141,10 +140,10 @@ class DncaTrainer():
       self.save_progress(i,loss_values)
       self.generate_gif(i,width,height,last_iter)
     
-  def save_progress(self,i,loss_values):
-    if i%self.save_iters == 0:
-      self.model.save_weights(self.checkpoint_path+'/'+str(i))
-      #self.model.save(self.checkpoint_path+'/'+str(i)+'.keras')
+  def save_progress(self,i,loss_values,result=False):
+    if i%self.save_iters == 0 or result:
+      safe_name = str(i) if not result else "result_"+str(i)+"_steps"
+      self.model.save_weights(self.checkpoint_path+'/'+safe_name)
 
       plt.plot(loss_values)
       plt.title(f'Loss function epoch num. {i}')
@@ -216,7 +215,8 @@ if __name__ == '__main__':
                   visualize_iters=2500,
                   save_iters=2500,
                   train_step_interval=arguments.train_interval,
-                  run=arguments.run
+                  run=arguments.run,
+                  folder=arguments.folder
                   )
   """
     def __init__(self,
