@@ -5,6 +5,7 @@ from matplotlib import pyplot as plt
 from tensorflow import keras
 import os
 import random
+import argparse
 
 def pil2tf(im):
   return tf.keras.utils.img_to_array(im,dtype="float32")
@@ -185,3 +186,22 @@ def match_last_channel(b,img):
     target_c = 0 if len(img.shape) == 2 else img.shape[-1] #0 if img has only one channel, else target of channels
     
     return transform_last_channel(b,target_c)
+
+def parse_int_tuple(arg):
+  """Parses string argument in format (X,Y) into tuple (x,y). X,Y are asumed to be int values
+
+  Args:
+      arg (String): string in format (X,Y)
+
+  Raises:
+      argparse.ArgumentTypeError: raised if arg is not in the correct format
+
+  Returns:
+      (x,.y): parsed input string argument into int tuple
+  """
+  try:
+      # Assuming the input format is (x, y)
+      x, y = map(int, arg.strip('()').split(','))
+      return x, y
+  except ValueError:
+      raise argparse.ArgumentTypeError("Invalid int tuple format. Use (x, y)")
