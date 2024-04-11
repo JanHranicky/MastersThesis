@@ -144,7 +144,7 @@ class DncaTrainer():
   def save_progress(self,i,loss_values):
     if i%self.save_iters == 0:
       self.model.save_weights(self.checkpoint_path+'/'+str(i))
-      self.model.save(self.checkpoint_path+'/'+str(i)+'.keras')
+      #self.model.save(self.checkpoint_path+'/'+str(i)+'.keras')
 
       plt.plot(loss_values)
       plt.title(f'Loss function epoch num. {i}')
