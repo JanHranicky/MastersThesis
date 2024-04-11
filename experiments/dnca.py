@@ -38,7 +38,8 @@ class DncaTrainer():
                visualize_iters=10000,
                save_iters=5000,
                generate_gif_iters=5000,
-               train_step_interval=(75,100)
+               train_step_interval=(75,100),
+               run=None
                ):
     self.batch_size = batch_size
     self.state_num = state_num
@@ -61,7 +62,11 @@ class DncaTrainer():
     self.data_pool_training = data_pool_training
     if self.data_pool_training:
       self.dp = data_pool.DataPool(self.width,self.height,self.model.channel_n) 
+      
     self.checkpoint_path = f'./checkpoints/{self.model.model_name}_{self.gt_img_name}'
+    if run:
+        run_path = 'run_'+str(run)
+        self.checkpoint_path = self.checkpoint_path+'/'+ run_path
     
     self.visualize_iters = visualize_iters
     self.save_iters = save_iters
@@ -210,7 +215,8 @@ if __name__ == '__main__':
                   data_pool_training=True,
                   visualize_iters=2500,
                   save_iters=2500,
-                  train_step_interval=arguments.train_interval
+                  train_step_interval=arguments.train_interval,
+                  run=arguments.run
                   )
   """
     def __init__(self,
