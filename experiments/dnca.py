@@ -34,7 +34,7 @@ class DncaTrainer():
                compare_channels=1,
                data_pool_training=False,
                lr=0.001, 
-               epoch_num=100000,
+               epoch_num=arguments.iters,
                visualize_iters=10000,
                save_iters=5000,
                generate_gif_iters=5000,
