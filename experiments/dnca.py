@@ -34,7 +34,7 @@ class DncaTrainer():
                compare_channels=1,
                data_pool_training=False,
                lr=0.001, 
-               epoch_num=arguments.iters,
+               epoch_num=100000,
                visualize_iters=10000,
                save_iters=5000,
                generate_gif_iters=5000,
@@ -216,7 +216,8 @@ if __name__ == '__main__':
                   save_iters=2500,
                   train_step_interval=arguments.train_interval,
                   run=arguments.run,
-                  folder=arguments.folder
+                  folder=arguments.folder,
+                  epoch_num=arguments.iters
                   )
   """
     def __init__(self,
