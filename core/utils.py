@@ -183,6 +183,9 @@ def match_last_channel(b,img):
     """
     if not tf.is_tensor(img): #convert to tensor if not already
         img = pil2tf(img)
+    if img.shape == b.shape:
+      return b
+    
     target_c = 0 if len(img.shape) == 2 else img.shape[-1] #0 if img has only one channel, else target of channels
     
     return transform_last_channel(b,target_c)
