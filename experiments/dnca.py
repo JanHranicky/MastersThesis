@@ -208,7 +208,7 @@ if __name__ == '__main__':
   
   date_time = datetime.now().strftime("%m_%d_%Y")
   gt_img = Image.open(arguments.image)
-
+  
   def custom_mse(gt,x):
     l_x = utils.match_last_channel(x,gt)
     return tf.reduce_mean(tf.square(l_x - gt))
@@ -221,7 +221,7 @@ if __name__ == '__main__':
   t = DncaTrainer(
                   ca,
                   loss_f,
-                  gt_img,
+                  gt_img.convert("RGB"),
                   gt_img.filename.split('/')[-1].split('.')[0],
                   state_num=arguments.states,
                   generate_gif_iters=50000,
