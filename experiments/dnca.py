@@ -8,6 +8,7 @@ import pathlib
 from datetime import datetime
 import random
 import argparse
+from tensorflow.python.client import device_lib
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Trains neural network as discrete neural cellular automaton')
@@ -178,6 +179,7 @@ class DncaTrainer():
         frames.append(self.grayscale_to_rgb(f))
       else:
         f = Image.fromarray(np.uint8(x[0][:,:,:3].numpy()))
+        print(f)
         frames.append(f)
         
     
@@ -252,7 +254,7 @@ if __name__ == '__main__':
                train_step_interval=(75,100)
                ):
   """
-  
+
   t.train()
 
 
