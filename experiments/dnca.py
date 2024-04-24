@@ -10,6 +10,18 @@ import random
 import argparse
 from tensorflow.python.client import device_lib
 
+def visualize_array_as_image(array):
+  """
+  Visualize a 2D array as an image using matplotlib.
+  Parameters:
+  array (2D array): The array to visualize.
+  Returns:
+  None
+  """
+  plt.imshow(array, cmap='gray', interpolation='nearest')
+  plt.axis('off')
+  plt.show()
+    
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Trains neural network as discrete neural cellular automaton')
 
@@ -65,8 +77,8 @@ class DncaTrainer():
       self.gt_tf = self.img_to_discrete_tensor(gt_img,state_num)
     else:
       self.gt_tf = tf.convert_to_tensor(gt_img, dtype=tf.float32)
-    
-    self.color_dict = {i: (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)) for i in range(self.state_num+1)}
+      
+    self.color_dict = self.set_color_dict(gt_img_name,state_num)
     
     self.data_pool_training = data_pool_training
     if self.data_pool_training:
@@ -81,6 +93,36 @@ class DncaTrainer():
     self.save_iters = save_iters
     self.generate_gif_iters = generate_gif_iters
   
+  
+  def set_color_dict(self,img_name,states):
+    color_dict = {
+      'duck' : {
+        8 : {
+          5 : (255, 255, 255),
+          6 : (245,245,245),
+          
+          0 : (237, 119, 69),
+          2 : (250,213,36),
+          7 : (248,210,37),
+          1 : (252,233,95),
+          
+          4 : (0,0,0),
+          0 : (0,0,0),
+        },
+      },
+      'flag_of_france' : {
+        8 : {
+          0 : (0,35,149),
+          5 : (255,255,255),
+          7: (237,41,57)
+        }
+      }
+    }
+    
+    if img_name in color_dict and states in color_dict[img_name]:
+      return color_dict[img_name][states]
+    else:
+      return {i: (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)) for i in range(self.state_num+1)}
   
   def img_to_discrete_tensor(self, img, states):
     """Converts input image into tensor by summing it's values into a single channel and then using modulo operation to get the values into the wanted number of states
@@ -104,6 +146,9 @@ class DncaTrainer():
         
       loss = self.loss_f(self.gt_tf,x)
 
+    if loss == 0:
+      return x, loss, iter_n
+    
     grads = g.gradient(loss, self.model.weights)
     grads = [g/(tf.norm(g)+1e-8) for g in grads]
     trainer.apply_gradients(zip(grads, self.model.weights))
@@ -204,7 +249,26 @@ class DncaTrainer():
             rgb_image.putpixel((x, y), rgb_value)
       
     return rgb_image  
-      
+
+def run_model_for_n_steps(width,height,trainer,iter=None):
+    frames = []
+    x = utils.init_batch(1,width,height,trainer.model.channel_n)
+    if iter is None:
+      iter = trainer.train_step_interval[1]
+    for _ in range(iter):
+      x = trainer.model(x)
+
+      if not trainer.full_range:
+        f = Image.fromarray(np.uint8(x[0][:,:,0].numpy()),mode="L")
+        frames.append(trainer.grayscale_to_rgb(f))
+      else:
+        f = Image.fromarray(np.uint8(x[0][:,:,:3].numpy()))
+        print(f)
+        frames.append(f)
+    print(x[0][:,:,0])
+    visualize_array_as_image(x[0][:,:,0])
+    trainer.make_gif('out',frames)
+    
 if __name__ == '__main__':
   arguments = parse_arguments()
   
@@ -213,10 +277,10 @@ if __name__ == '__main__':
   
   def custom_mse(gt,x):
     l_x = utils.match_last_channel(x,gt)
-    return tf.reduce_mean(tf.square(l_x - gt))
+    return tf.reduce_sum(tf.square(l_x - gt))
 
   ca = output_modulo_model.CA(channel_n=arguments.channels,model_name=date_time+'_modulo_'+os.path.basename(__file__).split('.')[0]+'_'+str(arguments.states)+"_states_"+str(arguments.channels)+"_layers_"+str(arguments.train_interval[0])+"_"+str(arguments.train_interval[1])+"_steps_full_range_"+str(arguments.full_range),states=arguments.states)
-  #ca.load_weights("./checkpoints/01_10_2024_in_range_single_channel_cmp8_states_single_c_compare_4_channels_xhrani02_100x100/64500")
+  #ca.load_weights("./checkpoints/dnca_best_flag/04_24_2024_modulo_dnca_8_states_2_layers_20_30_steps_full_range_False_flag_of_france/result_4132_steps")
 
   loss_f = custom_mse
 
@@ -227,7 +291,7 @@ if __name__ == '__main__':
                   gt_img.filename.split('/')[-1].split('.')[0],
                   state_num=arguments.states,
                   generate_gif_iters=50000,
-                  data_pool_training=True,
+                  data_pool_training=False,
                   visualize_iters=50000,
                   save_iters=50000,
                   train_step_interval=arguments.train_interval,
@@ -236,6 +300,32 @@ if __name__ == '__main__':
                   epoch_num=arguments.iters,
                   full_range=arguments.full_range
                   )
+  
+  #width, height = gt_img.convert("RGB").size
+  #gt_tf = t.img_to_discrete_tensor(gt_img,8)
+  #print(gt_tf)
+  #visualize_array_as_image(gt_tf)
+  
+  #color_dict = {
+  #  './img/duck.png' : {
+  #    '8' : {
+  #      5 : (255, 255, 255),
+  #      6 : (245,245,245),
+  #      
+  #      0 : (237, 119, 69),
+  #      2 : (250,213,36),
+  #      7 : (248,210,37),
+  #      1 : (252,233,95),
+  #      
+  #      4 : (0,0,0),
+  #      0 : (0,0,0),
+  #    },
+  #  },
+  #  
+  #}
+  #
+  ##for i in range(20,30):
+  #run_model_for_n_steps(height,width,t,29)
   """
     def __init__(self,
                model,
