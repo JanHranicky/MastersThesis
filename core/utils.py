@@ -208,3 +208,14 @@ def parse_int_tuple(arg):
       return x, y
   except ValueError:
       raise argparse.ArgumentTypeError("Invalid int tuple format. Use (x, y)")
+    
+def img_to_discrete_tensor(img, states):
+  """Converts input image into tensor by summing it's values into a single channel and then using modulo operation to get the values into the wanted number of states
+  Args:
+      img (Pil.Image): input as a PIL Image
+      states (integer): integer number of wanted states
+  Returns:
+      tf.Tensor: converted PIL Image into tf.Tensor
+  """
+  tensor = tf.reduce_sum(tf.convert_to_tensor(img, dtype=tf.float32), axis=-1)
+  return tf.math.floormod(tensor, tf.ones_like(tensor) * states)

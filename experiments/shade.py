@@ -9,14 +9,6 @@ import sys
 import argparse
 from timeit import default_timer as timer
 
-def parse_int_tuple(arg):
-    try:
-        # Assuming the input format is (x, y)
-        x, y = map(int, arg.strip('()').split(','))
-        return x, y
-    except ValueError:
-        raise argparse.ArgumentTypeError("Invalid int tuple format. Use (x, y)")
-
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Trains neural network using differential evolution')
 
@@ -24,7 +16,7 @@ def parse_arguments():
     parser.add_argument('-c', '--channels', type=int, help='Number of channels of the model', default=1)
     parser.add_argument('-i', '--iters', type=int, help='Maximum number of iterations', default=1000)
     parser.add_argument('-s', '--states', type=int, help='Size of the state space.', default=8)
-    parser.add_argument('-t', '--train_interval', type=parse_int_tuple, help='Train interval of the network', default=(20,30))
+    parser.add_argument('-t', '--train_interval', type=utils.parse_int_tuple, help='Train interval of the network', default=(20,30))
     parser.add_argument('-d', '--std_dev', type=float, help='Stddev used to generate initial population', default=0.02)
     parser.add_argument('-p', '--pop_size', type=int, help='size of the population', default=40)
     parser.add_argument('-x', '--cross_operator', type=str, help='Chosen crossoveroperator', default="binomial")
@@ -36,11 +28,8 @@ def parse_arguments():
 
     return parser.parse_args()
 
-def img_to_discrete_tensor(img, states):
-    tensor = tf.reduce_sum(tf.convert_to_tensor(img, dtype=tf.float32), axis=-1)
-    return tf.math.floormod(tensor, tf.ones_like(tensor) * states)
-
 arguments = parse_arguments()
+print("Printing arugments:")
 print(arguments)
 
 GT_IMG_PATH = arguments.image
@@ -49,7 +38,7 @@ gt_img = Image.open(GT_IMG_PATH)
 
 
 height,width = gt_img.size
-gt_tf = img_to_discrete_tensor(gt_img.convert("RGB"),arguments.states)
+gt_tf = utils.img_to_discrete_tensor(gt_img.convert("RGB"),arguments.states)
 model_name = "{}+{}+{}+channels_{}+iters_{}+states_{}+train_interval_{}+pop_size_{}".format(
     date_time,
     "shade",

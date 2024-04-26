@@ -43,7 +43,7 @@ class DncaTrainer():
     self.height, self.width = self.gt_img.size
     
     if not self.full_range:
-      self.gt_tf = self.img_to_discrete_tensor(gt_img,state_num)
+      self.gt_tf = utils.img_to_discrete_tensor(gt_img,state_num)
     else:
       self.gt_tf = tf.convert_to_tensor(gt_img, dtype=tf.float32)
     
@@ -61,20 +61,6 @@ class DncaTrainer():
     self.visualize_iters = visualize_iters
     self.save_iters = save_iters
     self.generate_gif_iters = generate_gif_iters
-  
-  
-  def img_to_discrete_tensor(self, img, states):
-    """Converts input image into tensor by summing it's values into a single channel and then using modulo operation to get the values into the wanted number of states
-
-    Args:
-        img (Pil.Image): input as a PIL Image
-        states (integer): integer number of wanted states
-
-    Returns:
-        tf.Tensor: converted PIL Image into tf.Tensor
-    """
-    tensor = tf.reduce_sum(tf.convert_to_tensor(img, dtype=tf.float32), axis=-1)
-    return tf.math.floormod(tensor, tf.ones_like(tensor) * states)
   
   @tf.function
   def train_step(self,x,trainer):
