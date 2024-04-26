@@ -49,7 +49,7 @@ gt_img = Image.open(GT_IMG_PATH)
 
 
 height,width = gt_img.size
-gt_tf = img_to_discrete_tensor(gt_img,arguments.states)
+gt_tf = img_to_discrete_tensor(gt_img.convert("RGB"),arguments.states)
 model_name = "{}+{}+{}+channels_{}+iters_{}+states_{}+train_interval_{}+pop_size_{}".format(
     date_time,
     "shade",
@@ -110,6 +110,8 @@ def cnt_loss(img,batch):
 tf_weights = de.extract_weights_as_tensors(ca)
 
 lowest_loss = sys.maxsize
+lowest_loss_iter = None
+lowest_loss_individual = None
 
 @tf.function
 def evaluate_individual(gt_tf, ca, width, height, channel_n, train_interval):
@@ -192,6 +194,8 @@ for i in range(arguments.iters):
     
     if min_value < lowest_loss:
         lowest_loss = min_value
+        lowest_loss_individual = old_pop[rating_list.index(min_value)]
+        lowest_loss_iter = i
         print(f'new lowest loss found {lowest_loss}')
     
     iter_end = timer()
@@ -204,9 +208,9 @@ if not RUN_NUM:
 else:
     run_path = 'run_'+str(RUN_NUM)+'+seed_'+str(arguments.seed)
     save_path = CHECKPOINT_PATH+'/'+ run_path
-weight_save_format = str(i)+'_'+"{:.2f}".format(min_value)
+weight_save_format = str(lowest_loss_iter)+'_'+"{:.2f}".format(lowest_loss)
 
-ca.set_weights(de.unflatten_tensor(old_pop[rating_list.index(min_value)],shapes))
+ca.set_weights(de.unflatten_tensor(lowest_loss_individual,shapes))
 ca.save_weights(save_path+'/'+weight_save_format)
 
 np_min_losses = np.array(min_losses)
