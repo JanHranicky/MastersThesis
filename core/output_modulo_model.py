@@ -19,14 +19,6 @@ class CA(tf.keras.Model):
       padding='SAME'
     )
     self(tf.zeros([1,3,3,channel_n])) #dummy call to initialiaze model, the dummy shape does not have to be the same as final data. But it's dimensionality should be similiar
-
-
-  def modulo_activation(self, x):
-    return x
-    mod_x = tf.math.floormod(x,tf.ones_like(x,dtype=tf.float32)*self.states)
-    return mod_x
-    return my_floor(mod_x)
-
   
   def set_rule_model(self,channel_n):
     return tf.keras.Sequential([
@@ -41,23 +33,15 @@ class CA(tf.keras.Model):
   def call(self,x):
     y = self.perceive_conv(x)
     dx = self.rule_model(y)
-    dx = self.my_floor(dx)
+    
+    dx = self.round_int(dx) #round_int activation
     return x+dx
-    #return self.my_floormod(x+dx)
-    return tf.math.floormod(x+dx,tf.ones_like(x,dtype=tf.float32)*self.states)
   
   @tf.custom_gradient
-  def my_floormod(self,x):
-    def my_floormod_grad(dy):
-        # During the backward pass, return dy as is, since we want the gradient to be unaffected
-        return dy
-    return tf.math.floormod(x,tf.ones_like(x,dtype=tf.float32)*self.states),my_floormod_grad
-  
-  @tf.custom_gradient
-  def my_floor(self,x):
-    def my_floor_grad(dy):
+  def round_int(self,x):
+    def round_int_grad(dy):
       return dy
     f_x = tf.floor(x)
-    return f_x,my_floor_grad
+    return f_x,round_int_grad
 
 
