@@ -25,6 +25,7 @@ def parse_arguments():
     parser.add_argument('-r', '--run', type=int, help='Number of the run. If provided results will be stored in a subfolder', default=None)
     parser.add_argument('-f', '--folder', type=str, help='Folder in which the reults will be stored', default='./checkpoints/DE/')
     parser.add_argument('-m', '--archive_len', type=int, help='Size of the archive, which stores the historical control parameters', default=10)
+    parser.add_argument('-p', '--repetion_per_run', type=int, help='Number of times the algoritmh will run in this program', default=1)
 
     return parser.parse_args()
 
@@ -35,7 +36,6 @@ print(arguments)
 GT_IMG_PATH = arguments.image
 date_time = datetime.now().strftime("%m_%d_%Y")
 gt_img = Image.open(GT_IMG_PATH)
-
 
 height,width = gt_img.size
 gt_tf = utils.img_to_discrete_tensor(gt_img.convert("RGB"),arguments.states)
@@ -53,34 +53,6 @@ model_name = "{}+{}+{}+channels_{}+iters_{}+states_{}+train_interval_{}+pop_size
 ca = output_modulo_model.CA(channel_n=arguments.channels,model_name=model_name,states=arguments.states)
 CHECKPOINT_PATH = arguments.folder+ca.model_name
 RUN_NUM = arguments.run
-    
-def grayscale_to_rgb(grayscale_image):
-    c_list = [(random.randint(0, 255),
-                      random.randint(0, 255),
-                      random.randint(0, 255))
-                     for _ in range(arguments.states+1)]
-  # Create a new image with the same size as the original but in RGB mode
-    rgb_image = Image.new("RGB", grayscale_image.size)
-  
-  # Iterate through each pixel in the image
-    for x in range(grayscale_image.width):
-        for y in range(grayscale_image.height):
-          # Get the grayscale pixel value at (x, y)
-            grayscale_value = grayscale_image.getpixel((x, y))
-          
-          # Map the grayscale value to an RGB value
-          # For simplicity, let's set R, G, and B to the grayscale value
-            rgb_value = c_list[grayscale_value]
-          
-          # Set the RGB value at (x, y) in the new image
-            rgb_image.putpixel((x, y), rgb_value)
-    
-    return rgb_image    
-
-def make_gif(name,frames):
-  frame_one = frames[0]
-  frame_one.save(name+".gif", format="GIF", append_images=frames,
-            save_all=True, duration=100, loop=0)
 
 lowest_loss = sys.maxsize
 lowest_loss_iter = None
@@ -92,7 +64,7 @@ def evaluate_individual(gt_tf, ca, width, height, channel_n, train_interval):
     total_iterations = tf.random.uniform([], train_interval[0], train_interval[1], tf.int32)
     
     loss = tf.constant(0, dtype=tf.int64)
-    for i in range(total_iterations):
+    for _ in range(total_iterations):
         x = ca(x)
 
     loss = utils.custom_l2(x,gt_tf)
@@ -114,12 +86,6 @@ def objective_func(c):
     print(f'objective_func() exection took {end-start}s')
     return nn_scores    
 
-def handle_nan_value(new_val):
-    if tf.math.is_nan(new_val):
-        exit()
-        return tf.constant(0.5)
-    return new_val
-
 print('Starting algorithm')
 
 tf_weights = de.extract_weights_as_tensors(ca)
@@ -128,12 +94,10 @@ flat,shapes = de.flatten_tensor(tf_weights)
 old_pop = de.generate_pop(flat,arguments.pop_size, arguments.std_dev)
 old_pop_rating = objective_func(old_pop)
 
-A = 1.0
-
 min_losses = []
 archive = de.Archive(arguments.archive_len)
 
-for j in range(4):
+for j in range(arguments.repetion_per_run):
     for i in range(arguments.iters):
         iter_start = timer()
         
@@ -165,12 +129,15 @@ for j in range(4):
         
         if min_value < lowest_loss:
             lowest_loss = min_value
+            lowest_loss_iter = i
+            lowest_loss_individual = old_pop[rating_list.index(min_value)]
             print(f'new lowest loss found {lowest_loss}')
         
         iter_end = timer()
         print(f'iteration execution took {iter_end-iter_start}s') 
         print('Iteration {}/{}. Lowest loss: {}. Current pop lowest loss {}. Archive sttus={}'.format(i,arguments.iters,lowest_loss,min_value,str(archive)))
     
+    #save
     if not RUN_NUM:
         path = CHECKPOINT_PATH + '+seed_'+str(arguments.seed)
         save_path = path
@@ -185,14 +152,15 @@ for j in range(4):
 
     np_min_losses = np.array(min_losses)
     np.save(save_path+'/convergence_arr.npy', np_min_losses)
+    
     frames = []
+    c_dict = utils.extract_color_dict(gt_img,gt_tf)
     x = utils.init_batch(1,width,height,arguments.channels)
     for _ in range(arguments.train_interval[1]):
         x = ca(x)
         f = tf.math.floormod(x,tf.ones_like(x,dtype=tf.float32)*arguments.states)
         f = tf.math.round(f)[0][:,:,0]
         f = Image.fromarray(np.uint8(f.numpy()),mode="L")
-        frames.append(grayscale_to_rgb(f))
-    make_gif(save_path+'/'+weight_save_format,frames)
-    
+        frames.append(utils.grayscale_to_rgb(f,c_dict))
+    utils.make_gif(save_path+'/'+weight_save_format,frames)
         

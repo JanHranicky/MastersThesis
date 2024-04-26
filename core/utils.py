@@ -241,3 +241,42 @@ def custom_l2(gt,x):
   """
   l_x = match_last_channel(x,gt)
   return tf.reduce_sum(tf.square(l_x - gt))
+
+
+def grayscale_to_rgb(grayscale_image,color_dict):
+  rgb_image = Image.new("RGB", grayscale_image.size)
+    
+  for x in range(grayscale_image.width):
+      for y in range(grayscale_image.height):
+          grayscale_value = grayscale_image.getpixel((x, y))
+          
+          if grayscale_value in color_dict:
+            rgb_value = color_dict[grayscale_value]
+          else:
+            random_rgb_value = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
+            rgb_value = random_rgb_value
+            
+            color_dict[grayscale_value] = random_rgb_value
+            
+          rgb_image.putpixel((x, y), rgb_value)
+    
+  return rgb_image 
+
+
+def extract_color_dict(gt_img,gt_tf):
+  width, height = gt_img.size
+  int_gt_tf = tf.cast(gt_tf,dtype=tf.int32)
+  
+  color_dict = {}
+  for y in range(height):
+      for x in range(width):
+          pixel = gt_img.getpixel((x, y))
+          if int_gt_tf[y][x].numpy() not in color_dict or color_dict[int_gt_tf[y][x].numpy()][0] < 200:
+            color_dict[int_gt_tf[y][x].numpy()] = pixel
+            
+  return color_dict
+
+def make_gif(name,frames):
+  frame_one = frames[0]
+  frame_one.save(name+".gif", format="GIF", append_images=frames,
+            save_all=True, duration=100, loop=0)

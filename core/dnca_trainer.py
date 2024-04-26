@@ -47,7 +47,7 @@ class DncaTrainer():
     else:
       self.gt_tf = tf.convert_to_tensor(gt_img, dtype=tf.float32)
     
-    self.color_dict = {i: (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)) for i in range(self.state_num+1)}
+    self.color_dict = utils.extract_color_dict(gt_img,self.gt_tf)
     
     self.data_pool_training = data_pool_training
     if self.data_pool_training:
@@ -128,12 +128,7 @@ class DncaTrainer():
       plt.xlabel('Epoch')
       plt.ylabel('Loss value')
       plt.savefig(f'{self.checkpoint_path}/loss.png')
-  
-  def make_gif(self,name,frames):
-    frame_one = frames[0]
-    frame_one.save(name+".gif", format="GIF", append_images=frames,
-              save_all=True, duration=100, loop=0)  
-  
+    
   def generate_gif(self,i,width,height,iter,result=False):
     if not self.generate_gif or i%self.generate_gif_iters != 0: return
     
@@ -144,31 +139,12 @@ class DncaTrainer():
 
       if not self.full_range:
         f = Image.fromarray(np.uint8(x[0][:,:,0].numpy()),mode="L")
-        frames.append(self.grayscale_to_rgb(f))
+        frames.append(utils.grayscale_to_rgb(f,self.color_dict))
+        exit()
       else:
         f = Image.fromarray(np.uint8(x[0][:,:,:3].numpy()))
         print(f)
         frames.append(f)
-        
     
     gif_name = str(i) if not result else "result_"+str(iter.numpy())+"_steps"
-    self.make_gif(str(self.checkpoint_path)+'/'+gif_name,frames)
-
-  def grayscale_to_rgb(self,grayscale_image):
-    rgb_image = Image.new("RGB", grayscale_image.size)
-      
-    for x in range(grayscale_image.width):
-        for y in range(grayscale_image.height):
-            grayscale_value = grayscale_image.getpixel((x, y))
-            
-            if grayscale_value in self.color_dict:
-              rgb_value = self.color_dict[grayscale_value]
-            else:
-              random_rgb_value = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
-              rgb_value = random_rgb_value
-              
-              self.color_dict[grayscale_value] = random_rgb_value
-              
-            rgb_image.putpixel((x, y), rgb_value)
-      
-    return rgb_image  
+    utils.make_gif(str(self.checkpoint_path)+'/'+gif_name,frames)
