@@ -94,13 +94,14 @@ gt_img = Image.open(GT_IMG_PATH)
 height,width = gt_img.size
 gt_tf = utils.img_to_discrete_tensor(gt_img.convert("RGB"),arguments.states)
 
-model_name = "{}+shade+states_{}+channels_{}+train_interval_{}+iters_{}+pop_size_{}+{}".format(
+model_name = "{}+shade+states_{}+channels_{}+train_interval_{}+iters_{}+pop_size_{}+operator_{}+{}".format(
     date_time,
     arguments.states,
     arguments.channels,
     arguments.train_interval,
     arguments.iters,
     arguments.pop_size,
+    arguments.cross_operator,
     GT_IMG_PATH.split('/')[-1].split('.')[0], #gt_img name
 )
 ca = output_modulo_model.CA(channel_n=arguments.channels,model_name=model_name,states=arguments.states)

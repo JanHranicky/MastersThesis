@@ -53,7 +53,7 @@ class DncaTrainer():
     if self.data_pool_training:
       self.dp = data_pool.DataPool(self.width,self.height,self.model.channel_n) 
       
-    self.checkpoint_path = f'{folder}{self.model.model_name}_{self.gt_img_name}'
+    self.checkpoint_path = f'{folder}{self.model.model_name}+{self.gt_img_name}'
     if run:
         run_path = 'run_'+str(run)
         self.checkpoint_path = self.checkpoint_path+'/'+ run_path
