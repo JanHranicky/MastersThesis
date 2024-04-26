@@ -26,21 +26,8 @@ if __name__ == '__main__':
   date_time = datetime.now().strftime("%m_%d_%Y")
   gt_img = Image.open(arguments.image)
   
-  def custom_mse(gt,x):
-    """Custom MSE implementation, matches last channels of ground truth image and the CA output before computing MSE
-
-    Args:
-        gt (tf.Tensor): ground truth tensor
-        x (tf.Tensor): output of the CA model 
-
-    Returns:
-        tf.Tensor: value of the MSE loss
-    """
-    l_x = utils.match_last_channel(x,gt)
-    return tf.reduce_mean(tf.square(l_x - gt))
-
   ca = output_modulo_model.CA(channel_n=arguments.channels,model_name=date_time+'_modulo_'+os.path.basename(__file__).split('.')[0]+'_'+str(arguments.states)+"_states_"+str(arguments.channels)+"_layers_"+str(arguments.train_interval[0])+"_"+str(arguments.train_interval[1])+"_steps_full_range_"+str(arguments.full_range),states=arguments.states)
-  loss_f = custom_mse
+  loss_f = utils.custom_mse
 
   t = dnca_trainer.DncaTrainer(
                   ca,

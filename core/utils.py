@@ -219,3 +219,25 @@ def img_to_discrete_tensor(img, states):
   """
   tensor = tf.reduce_sum(tf.convert_to_tensor(img, dtype=tf.float32), axis=-1)
   return tf.math.floormod(tensor, tf.ones_like(tensor) * states)
+
+def custom_mse(gt,x):
+  """Custom MSE implementation, matches last channels of ground truth image and the CA output before computing MSE
+  Args:
+      gt (tf.Tensor): ground truth tensor
+      x (tf.Tensor): output of the CA model 
+  Returns:
+      tf.Tensor: value of the MSE loss
+  """
+  l_x = match_last_channel(x,gt)
+  return tf.reduce_mean(tf.square(l_x - gt))
+
+def custom_l2(gt,x):
+  """Custom L2 implementation, matches last channels of ground truth image and the CA output before computing L2
+  Args:
+      gt (tf.Tensor): ground truth tensor
+      x (tf.Tensor): output of the CA model 
+  Returns:
+      tf.Tensor: value of the L2 loss
+  """
+  l_x = match_last_channel(x,gt)
+  return tf.reduce_sum(tf.square(l_x - gt))

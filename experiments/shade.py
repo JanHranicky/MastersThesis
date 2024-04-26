@@ -82,22 +82,6 @@ def make_gif(name,frames):
   frame_one.save(name+".gif", format="GIF", append_images=frames,
             save_all=True, duration=100, loop=0)
 
-def custom_mse(x, gt):
-    l_x = utils.match_last_channel(x,gt)
-    return tf.reduce_sum(tf.square(l_x - gt))
-
-def cnt_loss(img,batch):
-  l_x = utils.match_last_channel(batch,img)
-  
-  img = tf.cast(img,dtype=tf.float32)
-
-  diff = (l_x - img)
-  diff_cnt = tf.math.count_nonzero(diff)
-
-  return diff_cnt
-
-tf_weights = de.extract_weights_as_tensors(ca)
-
 lowest_loss = sys.maxsize
 lowest_loss_iter = None
 lowest_loss_individual = None
@@ -110,11 +94,8 @@ def evaluate_individual(gt_tf, ca, width, height, channel_n, train_interval):
     loss = tf.constant(0, dtype=tf.int64)
     for i in range(total_iterations):
         x = ca(x)
-        #if i == total_iterations - 2:
-        #    loss = cnt_loss(gt_tf, x)
-    
-    #loss += cnt_loss(gt_tf, x)
-    loss = custom_mse(x,gt_tf)
+
+    loss = utils.custom_l2(x,gt_tf)
     return loss
 
 def objective_func(c):
@@ -141,7 +122,7 @@ def handle_nan_value(new_val):
 
 print('Starting algorithm')
 
-og_weights = ca.get_weights()
+tf_weights = de.extract_weights_as_tensors(ca)
 flat,shapes = de.flatten_tensor(tf_weights)
 
 old_pop = de.generate_pop(flat,arguments.pop_size, arguments.std_dev)
