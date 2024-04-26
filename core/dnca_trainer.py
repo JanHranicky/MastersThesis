@@ -140,7 +140,6 @@ class DncaTrainer():
       if not self.full_range:
         f = Image.fromarray(np.uint8(x[0][:,:,0].numpy()),mode="L")
         frames.append(utils.grayscale_to_rgb(f,self.color_dict))
-        exit()
       else:
         f = Image.fromarray(np.uint8(x[0][:,:,:3].numpy()))
         print(f)

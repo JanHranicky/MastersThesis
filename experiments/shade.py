@@ -93,17 +93,16 @@ gt_img = Image.open(GT_IMG_PATH)
 
 height,width = gt_img.size
 gt_tf = utils.img_to_discrete_tensor(gt_img.convert("RGB"),arguments.states)
-model_name = "{}+{}+{}+channels_{}+iters_{}+states_{}+train_interval_{}+pop_size_{}".format(
-    date_time,
-    "shade",
-    GT_IMG_PATH.split('/')[-1].split('.')[0], #gt_img name
-    arguments.channels,
-    arguments.iters,
-    arguments.states,
-    arguments.train_interval,
-    arguments.pop_size,
-)
 
+model_name = "{}+shade+states_{}+channels_{}+train_interval_{}+iters_{}+pop_size_{}+{}".format(
+    date_time,
+    arguments.states,
+    arguments.channels,
+    arguments.train_interval,
+    arguments.iters,
+    arguments.pop_size,
+    GT_IMG_PATH.split('/')[-1].split('.')[0], #gt_img name
+)
 ca = output_modulo_model.CA(channel_n=arguments.channels,model_name=model_name,states=arguments.states)
 CHECKPOINT_PATH = arguments.folder+ca.model_name
 RUN_NUM = arguments.run
