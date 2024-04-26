@@ -161,64 +161,66 @@ A = 1.0
 min_losses = []
 archive = de.Archive(arguments.archive_len)
 
-for i in range(arguments.iters):
-    iter_start = timer()
-    
-    s_cr = None 
-    s_f = None
-    
-    c_parameters = de.generate_control_parameters(arguments.pop_size, archive)
-    p_best_individuals = de.generate_top_n_indiduals(old_pop_rating)
-    indices = de.generate_unique_indices(arguments.pop_size)
-    
-    mixed_pop = de.current_to_pbest_mutation(old_pop,indices,c_parameters,p_best_individuals,arguments.cross_operator)
-    mixed_pop_rating = objective_func(mixed_pop)
-    
-    new_pop, new_pop_rating, better_mutants = de.shade_new_pop(old_pop,old_pop_rating,mixed_pop,mixed_pop_rating)
-    
-    if better_mutants:
-        new_f = de.mean_wl_f(old_pop_rating,mixed_pop_rating,better_mutants,c_parameters)
-        new_cr = de.mean_wa_cr(old_pop_rating,mixed_pop_rating,better_mutants,c_parameters)
+for j in range(4):
+    for i in range(arguments.iters):
+        iter_start = timer()
         
-        archive.add((new_f,new_cr))
-
-    #set the new population
-    old_pop = new_pop
-    old_pop_rating = new_pop_rating
+        s_cr = None 
+        s_f = None
         
-    rating_list = [r.numpy() for r in old_pop_rating]
-    min_value = min(rating_list)
-    min_losses.append(min_value)
-    
-    if min_value < lowest_loss:
-        lowest_loss = min_value
-        print(f'new lowest loss found {lowest_loss}')
-    
-    iter_end = timer()
-    print(f'iteration execution took {iter_end-iter_start}s') 
-    print('Iteration {}/{}. Lowest loss: {}. Current pop lowest loss {}. Archive sttus={}'.format(i,arguments.iters,lowest_loss,min_value,str(archive)))
-    
-if not RUN_NUM:
-    path = CHECKPOINT_PATH + '+seed_'+str(arguments.seed)
-    save_path = path
-else:
-    run_path = 'run_'+str(RUN_NUM)+'+seed_'+str(arguments.seed)
-    save_path = CHECKPOINT_PATH+'/'+ run_path
-weight_save_format = str(i)+'_'+"{:.2f}".format(min_value)
+        c_parameters = de.generate_control_parameters(arguments.pop_size, archive)
+        p_best_individuals = de.generate_top_n_indiduals(old_pop_rating)
+        indices = de.generate_unique_indices(arguments.pop_size)
+        
+        mixed_pop = de.current_to_pbest_mutation(old_pop,indices,c_parameters,p_best_individuals,arguments.cross_operator)
+        mixed_pop_rating = objective_func(mixed_pop)
+        
+        new_pop, new_pop_rating, better_mutants = de.shade_new_pop(old_pop,old_pop_rating,mixed_pop,mixed_pop_rating)
+        
+        if better_mutants:
+            new_f = de.mean_wl_f(old_pop_rating,mixed_pop_rating,better_mutants,c_parameters)
+            new_cr = de.mean_wa_cr(old_pop_rating,mixed_pop_rating,better_mutants,c_parameters)
+            
+            archive.add((new_f,new_cr))
 
-ca.set_weights(de.unflatten_tensor(old_pop[rating_list.index(min_value)],shapes))
-ca.save_weights(save_path+'/'+weight_save_format)
+        #set the new population
+        old_pop = new_pop
+        old_pop_rating = new_pop_rating
+            
+        rating_list = [r.numpy() for r in old_pop_rating]
+        min_value = min(rating_list)
+        min_losses.append(min_value)
+        
+        if min_value < lowest_loss:
+            lowest_loss = min_value
+            print(f'new lowest loss found {lowest_loss}')
+        
+        iter_end = timer()
+        print(f'iteration execution took {iter_end-iter_start}s') 
+        print('Iteration {}/{}. Lowest loss: {}. Current pop lowest loss {}. Archive sttus={}'.format(i,arguments.iters,lowest_loss,min_value,str(archive)))
+        
+    if not RUN_NUM:
+        path = CHECKPOINT_PATH + '+seed_'+str(arguments.seed)
+        save_path = path
+    else:
+        run = (j * 8000) + RUN_NUM
+        run_path = 'run_'+str(run)+'+seed_'+str(arguments.seed)
+        save_path = CHECKPOINT_PATH+'/'+ run_path
+    weight_save_format = str(i)+'_'+"{:.2f}".format(min_value)
 
-np_min_losses = np.array(min_losses)
-np.save(save_path+'/convergence_arr.npy', np_min_losses)
-frames = []
-x = utils.init_batch(1,width,height,arguments.channels)
-for _ in range(arguments.train_interval[1]):
-    x = ca(x)
-    f = tf.math.floormod(x,tf.ones_like(x,dtype=tf.float32)*arguments.states)
-    f = tf.math.round(f)[0][:,:,0]
-    f = Image.fromarray(np.uint8(f.numpy()),mode="L")
-    frames.append(grayscale_to_rgb(f))
-make_gif(save_path+'/'+weight_save_format,frames)
+    ca.set_weights(de.unflatten_tensor(old_pop[rating_list.index(min_value)],shapes))
+    ca.save_weights(save_path+'/'+weight_save_format)
+
+    np_min_losses = np.array(min_losses)
+    np.save(save_path+'/convergence_arr.npy', np_min_losses)
+    frames = []
+    x = utils.init_batch(1,width,height,arguments.channels)
+    for _ in range(arguments.train_interval[1]):
+        x = ca(x)
+        f = tf.math.floormod(x,tf.ones_like(x,dtype=tf.float32)*arguments.states)
+        f = tf.math.round(f)[0][:,:,0]
+        f = Image.fromarray(np.uint8(f.numpy()),mode="L")
+        frames.append(grayscale_to_rgb(f))
+    make_gif(save_path+'/'+weight_save_format,frames)
     
         
