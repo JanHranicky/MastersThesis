@@ -33,7 +33,7 @@ if __name__ == '__main__':
     arguments.train_interval,
     arguments.full_range
   )
-  ca = output_modulo_model.CA(channel_n=arguments.channels,model_name=model_name,states=arguments.states)
+  ca = output_modulo_model.CA(arguments.image,channel_n=arguments.channels,model_name=model_name,states=arguments.states)
   loss_f = utils.custom_mse
 
   t = dnca_trainer.DncaTrainer(

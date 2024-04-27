@@ -5,12 +5,13 @@ class CA(tf.keras.Model):
   '''
   Represents the model of cellular automata
   '''
-  def __init__(self,channel_n=16,model_name="CA",states=8):
+  def __init__(self,target_img_path,channel_n=16,model_name="CA",states=8):
     super().__init__() #Need to be called to initialize the super tf.keras.Model class in order to use tensorflow utilities
 
     self.states = states
     self.channel_n = channel_n
     self.model_name = model_name
+    self.target_img_path = target_img_path
     self.rule_model = self.set_rule_model(channel_n)
     self.perceive_conv = tf.keras.layers.DepthwiseConv2D(
       kernel_size=3,

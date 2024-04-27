@@ -68,7 +68,8 @@ def save_best_solution():
 
     ca.set_weights(de.unflatten_tensor(lowest_loss_individual,shapes))
     ca.save_weights(save_path+'/'+weight_save_format)
-
+    ca.save(save_path+'/'+weight_save_format+'.keras')
+    
     np_min_losses = np.array(min_losses)
     np.save(save_path+'/convergence_arr.npy', np_min_losses)
     
@@ -104,7 +105,7 @@ model_name = "{}+shade+states_{}+channels_{}+train_interval_{}+iters_{}+pop_size
     arguments.cross_operator,
     GT_IMG_PATH.split('/')[-1].split('.')[0], #gt_img name
 )
-ca = output_modulo_model.CA(channel_n=arguments.channels,model_name=model_name,states=arguments.states)
+ca = output_modulo_model.CA(GT_IMG_PATH, channel_n=arguments.channels,model_name=model_name,states=arguments.states)
 CHECKPOINT_PATH = arguments.folder+ca.model_name
 RUN_NUM = arguments.run
 

@@ -4,9 +4,10 @@ import numpy as np
 class Display():
     DEFAULT_SIZE = 30
     
-    def __init__(self,c_x,c_y) -> None:
+    def __init__(self,c_x,c_y,root) -> None:
         self.m = None
         
+        self.root = root
         self.c_x = c_x
         self.c_y = c_y
         
@@ -19,6 +20,8 @@ class Display():
         
         self.step = 0
         self.images = []
+        
+        self.model = None
         
         self.set_image(self.x,self.y)
 
@@ -53,11 +56,13 @@ class Display():
         print(f'color of clicked = {self.canvas.itemcget(self.canvas_grid[pixel_x][pixel_y], "fill")}')
     def init_canvas_grid(self,width,height):
         if self.canvas is not None:
-            self.canvas.pack_forget() #remove old canvas before creating new one
+             #self.canvas.pack_forget() #remove old canvas before creating new one
+             self.canvas.forget() #remove old canvas before creating new one
             
         self.canvas_grid = [] #reset canvas grid
         self.canvas = tk.Canvas(width=self.c_x, height=self.c_y)  # Adjust the width and height as needed
-        self.canvas.pack()
+        #self.canvas.pack()
+        self.canvas.grid(row=3,column=0,sticky="nsew")
         
         for y in range(width):
             self.canvas_grid.append([])
@@ -108,3 +113,6 @@ class Display():
                 #print(f"Pixel at ({x}, {y}): {hex_color}")
                 id =  self.canvas_grid[y][x]
                 self.canvas.itemconfig(id, fill=hex_color)
+    
+    def is_ready(self):
+        return self.model is None
