@@ -35,7 +35,7 @@ if __name__ == '__main__':
     arguments.full_range
   )
   ca = output_modulo_model.CA(arguments.image,channel_n=arguments.channels,model_name=model_name,states=arguments.states)
-  #ca.load_weights('/mnt/c/Users/hrani/Downloads/prince/250000')
+  ca.load_weights('/mnt/c/Users/hrani/Downloads/duck_30x30/250000')
   
   loss_f = utils.custom_mse
 
@@ -47,7 +47,6 @@ if __name__ == '__main__':
                   state_num=arguments.states,
                   generate_gif_iters=1000,
                   data_pool_training=True,
-                  visualize_iters=1000,
                   save_iters=1000,
                   lr=arguments.lr,
                   train_step_interval=arguments.train_interval,
