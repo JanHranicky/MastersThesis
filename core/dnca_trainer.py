@@ -18,7 +18,6 @@ class DncaTrainer():
                data_pool_training=False,
                lr=0.001, 
                epoch_num=100000,
-               visualize_iters=10000,
                save_iters=5000,
                generate_gif_iters=5000,
                train_step_interval=(75,100),
@@ -44,10 +43,9 @@ class DncaTrainer():
     
     if not self.full_range:
       self.gt_tf = utils.img_to_discrete_tensor(gt_img,state_num)
+      self.color_dict = utils.extract_color_dict(gt_img,self.gt_tf)
     else:
       self.gt_tf = tf.convert_to_tensor(gt_img, dtype=tf.float32)
-    
-    self.color_dict = utils.extract_color_dict(gt_img,self.gt_tf)
     
     self.data_pool_training = data_pool_training
     if self.data_pool_training:
@@ -58,7 +56,6 @@ class DncaTrainer():
         run_path = 'run_'+str(run)
         self.checkpoint_path = self.checkpoint_path+'/'+ run_path
     
-    self.visualize_iters = visualize_iters
     self.save_iters = save_iters
     self.generate_gif_iters = generate_gif_iters
   
@@ -142,8 +139,7 @@ class DncaTrainer():
         f = Image.fromarray(np.uint8(x[0][:,:,0].numpy()),mode="L")
         frames.append(utils.grayscale_to_rgb(f,self.color_dict))
       else:
-        f = Image.fromarray(np.uint8(x[0][:,:,:3].numpy()))
-        print(f)
+        f = utils.tf2pil(x[0].numpy())
         frames.append(f)
     
     gif_name = str(i) if not result else "result_"+str(iter.numpy())+"_steps"

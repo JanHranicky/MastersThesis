@@ -17,6 +17,7 @@ def parse_arguments():
     parser.add_argument('-r', '--run', type=int, help='Number of the run. If provided results will be stored in a subfolder', default=None)
     parser.add_argument('-f', '--folder', type=str, help='Folder in which the reults will be stored', default='./checkpoints/GD/')
     parser.add_argument('-g', '--full_range', type=bool, help='If set to true will validate all RGB channels of the image', default=False)
+    parser.add_argument('-l', '--lr', type=float, help='Learning rate of the model', default=0.001)
 
     return parser.parse_args()
       
@@ -34,6 +35,8 @@ if __name__ == '__main__':
     arguments.full_range
   )
   ca = output_modulo_model.CA(arguments.image,channel_n=arguments.channels,model_name=model_name,states=arguments.states)
+  #ca.load_weights('/mnt/c/Users/hrani/Downloads/prince/250000')
+  
   loss_f = utils.custom_mse
 
   t = dnca_trainer.DncaTrainer(
@@ -42,10 +45,11 @@ if __name__ == '__main__':
                   gt_img.convert("RGB"),
                   gt_img.filename.split('/')[-1].split('.')[0],
                   state_num=arguments.states,
-                  generate_gif_iters=50000,
+                  generate_gif_iters=1000,
                   data_pool_training=True,
-                  visualize_iters=50000,
-                  save_iters=50000,
+                  visualize_iters=1000,
+                  save_iters=1000,
+                  lr=arguments.lr,
                   train_step_interval=arguments.train_interval,
                   run=arguments.run,
                   folder=arguments.folder,
