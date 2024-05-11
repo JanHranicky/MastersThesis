@@ -112,8 +112,14 @@ class DncaTrainer():
       self.save_progress(i,loss_values)
       self.generate_gif(i,width,height,last_iter)
     
-  def save_progress(self,i,loss_values,result=False):
-    if i%self.save_iters == 0 or result:
+    #save the last iteration no matter the save_iters and generate_gif_iters parameters
+    if self.epoch_num%self.save_iters != 0:
+      self.save_progress(self.epoch_num,loss_values,final_iteration=True)
+    if self.generate_gif and self.epoch_num%self.generate_gif_iters != 0:
+      self.generate_gif(self.epoch_num,width,height,last_iter,final_iteration=True)
+    
+  def save_progress(self,i,loss_values,result=False,final_iteration=False):
+    if i%self.save_iters == 0 or result or final_iteration:
       safe_name = str(i) if not result else "result_"+str(i)+"_steps"
       #safe_name += ".weights.h5"
       self.model.save_weights(self.checkpoint_path+'/'+safe_name)
@@ -127,8 +133,8 @@ class DncaTrainer():
       plt.ylabel('Loss value')
       plt.savefig(f'{self.checkpoint_path}/loss.png')
     
-  def generate_gif(self,i,width,height,iter,result=False):
-    if not self.generate_gif or i%self.generate_gif_iters != 0: return
+  def generate_gif(self,i,width,height,iter,result=False,final_iteration=False):
+    if not self.generate_gif or i%self.generate_gif_iters != 0 and (not result and not final_iteration): return
     
     frames = []
     x = utils.init_batch(1,width,height,self.model.channel_n)
@@ -143,4 +149,5 @@ class DncaTrainer():
         frames.append(f)
     
     gif_name = str(i) if not result else "result_"+str(iter.numpy())+"_steps"
+    
     utils.make_gif(str(self.checkpoint_path)+'/'+gif_name,frames)
