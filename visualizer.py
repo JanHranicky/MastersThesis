@@ -3,6 +3,11 @@ from tkinter import filedialog as fd
 from ui import display, output
 from core import utils
 import keras
+import tensorflow as tf 
+from PIL import Image
+import numpy as np
+
+_BUTTONS_DISABLED = True
 
 def load_model(display, buttons):
     filename = load_file([('Keras models', '*.keras')])
@@ -15,7 +20,7 @@ def load_model(display, buttons):
         display.set_model(model)
         
         print(f"Successfully loaded model. Number of channels: {model.channel_n}, Trained img: {model.target_img_path}\n")
-        
+                
         load_image(display, model.target_img_path)
         
         enable_buttons(buttons)
@@ -38,11 +43,14 @@ def load_image(display, file_name=None):
             return
     try:
         print(f"Trying to load image: {file_name}")
-        image_data = utils.open_image(file_name)
+        image_data = Image.open(file_name)
             
-        width, height = image_data.shape[0], image_data.shape[1]
-        image_data = utils.generate_empty_img(width, height)
+        height, width = image_data.size
         display.set_image(width, height)
+        
+        if display.model and display.model.channel_n < 3:
+            display.gt_tf = utils.img_to_discrete_tensor(image_data,display.model.states)
+            display.color_dict = utils.extract_color_dict(image_data,display.gt_tf)
         
         print(f"Successfully loaded the image.\n")
     except Exception as e:  
@@ -51,23 +59,31 @@ def load_image(display, file_name=None):
 def enable_buttons(buttons):
     for button in buttons:
         button.config(state=tk.NORMAL)
+    global _BUTTONS_DISABLED
+    _BUTTONS_DISABLED = False
 
 def disable_buttons(buttons):
     for button in buttons:
         button.config(state=tk.DISABLED)
+    global _BUTTONS_DISABLED
+    _BUTTONS_DISABLED = True
 
 def model_step(display):
     if display.model_input is None:
         x = utils.init_batch(1, display.x, display.y, display.model.channel_n)
     else:
         x = display.model_input
-    print(display.model.target_img_path)
-    print(display.model.channel_n)
+        
     x = display.model(x)
     display.model_input = x
-    print(utils.tf2pil(x[0].numpy()))
-
-    display.forward(utils.tf2pil(x[0].numpy()))
+    
+    if display.model.channel_n < 3:
+        f = Image.fromarray(np.uint8(x[0][:,:,0].numpy()),mode="L")
+        display_img = utils.grayscale_to_rgb(f,display.color_dict)
+    else:
+        display_img = utils.tf2pil(x[0].numpy())
+        
+    display.forward(display_img)
 
 def tksleep(t):
     'emulating time.sleep(seconds)'
@@ -89,7 +105,6 @@ def play(button, d):
         tksleep(0.05)
 
 def stop():
-    print('in stop()')
     global animate
     animate = False
 
@@ -100,7 +115,9 @@ def step_back(d):
     d.back()
   
 def keypress(event, key):
-    global d
+    global d,_BUTTONS_DISABLED
+    if _BUTTONS_DISABLED:
+        return
     if key == "left":
         step_back(d)
     elif key == "right":
@@ -115,8 +132,10 @@ def main():
     root = tk.Tk()
     root.title("CA state visualization")
     root.geometry("1600x1080")
+    root.minsize(1600, 1080)
+    root.maxsize(1600, 1080)
     root.resizable(0, 0)
-
+    
     global play_button
     previous_button, next_button, play_button, reset_button = None, None, None, None
     
@@ -153,9 +172,12 @@ def main():
     textbox = tk.Text(root, wrap='word')
     textbox.grid(row=3, column=1, sticky="nsew")
     redirected_output = output.RedirectedOutput(textbox)
+    
+    step_cnt = display.StepCounter(root)
+    step_cnt.grid(row=2, column=1, sticky="nsew")
         
     global d
-    d = display.Display(canvas_x, canvas_y, root)
+    d = display.Display(canvas_x, canvas_y, step_cnt, root)
     root.bind('<Left>', func=lambda event: keypress(event, key="left"))
     root.bind('<Right>', func=lambda event: keypress(event, key="right"))
     root.bind('<space>', func=lambda event: keypress(event, key="space"))
