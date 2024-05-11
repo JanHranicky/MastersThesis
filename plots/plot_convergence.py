@@ -100,10 +100,8 @@ def plot_de_convergence(loss_dict,dir_path):
                                     )
                   
 def make_plot(data,x_label,y_label,title, file_name,dir_path):
-    print(len(data))
     fig, ax = plt.subplots()
     for i, run in enumerate(data):
-        print(f'run: {run}')
         ax.plot(run[0], label=f'Run {i+1}')
         
     #ax.set_xlabel(x_label)
