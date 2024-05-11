@@ -4,6 +4,7 @@ from PIL import Image
 import os
 from datetime import datetime
 import argparse
+import numpy as np
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Trains neural network as discrete neural cellular automaton using Gradient descent')
@@ -35,8 +36,6 @@ if __name__ == '__main__':
     arguments.full_range
   )
   ca = output_modulo_model.CA(arguments.image,channel_n=arguments.channels,model_name=model_name,states=arguments.states)
-  ca.load_weights('/mnt/c/Users/hrani/Downloads/duck_30x30/250000')
-  
   loss_f = utils.custom_mse
 
   t = dnca_trainer.DncaTrainer(
