@@ -1,0 +1,2 @@
+model_checkpoint_path: "mona_lisa_40x46"
+all_model_checkpoint_paths: "mona_lisa_40x46"

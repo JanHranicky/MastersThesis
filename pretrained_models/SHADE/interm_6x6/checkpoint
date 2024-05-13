@@ -1,0 +1,2 @@
+model_checkpoint_path: "interm_6x6"
+all_model_checkpoint_paths: "interm_6x6"

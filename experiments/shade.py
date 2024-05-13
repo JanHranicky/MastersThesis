@@ -8,14 +8,7 @@ import random
 import sys 
 import argparse
 from timeit import default_timer as timer
-
-def parse_int_tuple(arg):
-    try:
-        # Assuming the input format is (x, y)
-        x, y = map(int, arg.strip('()').split(','))
-        return x, y
-    except ValueError:
-        raise argparse.ArgumentTypeError("Invalid int tuple format. Use (x, y)")
+from matplotlib import pyplot as plt
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Trains neural network using differential evolution')
@@ -24,94 +17,17 @@ def parse_arguments():
     parser.add_argument('-c', '--channels', type=int, help='Number of channels of the model', default=1)
     parser.add_argument('-i', '--iters', type=int, help='Maximum number of iterations', default=1000)
     parser.add_argument('-s', '--states', type=int, help='Size of the state space.', default=8)
-    parser.add_argument('-t', '--train_interval', type=parse_int_tuple, help='Train interval of the network', default=(20,30))
+    parser.add_argument('-t', '--train_interval', type=utils.parse_int_tuple, help='Train interval of the network', default=(20,30))
     parser.add_argument('-d', '--std_dev', type=float, help='Stddev used to generate initial population', default=0.02)
     parser.add_argument('-p', '--pop_size', type=int, help='size of the population', default=40)
     parser.add_argument('-x', '--cross_operator', type=str, help='Chosen crossoveroperator', default="binomial")
-    parser.add_argument('-g', '--seed', type=int, help='Seed for generator', default=random.randint(0,sys.maxsize))
     parser.add_argument('-a', '--image', type=str, help='Path to GT image', default='./img/vut_logo_17x17_2px_padding.png')
     parser.add_argument('-r', '--run', type=int, help='Number of the run. If provided results will be stored in a subfolder', default=None)
     parser.add_argument('-f', '--folder', type=str, help='Folder in which the reults will be stored', default='./checkpoints/DE/')
     parser.add_argument('-m', '--archive_len', type=int, help='Size of the archive, which stores the historical control parameters', default=10)
+    parser.add_argument('-e', '--repetion_per_run', type=int, help='Number of times the algorithm will run in this program', default=1)
 
     return parser.parse_args()
-
-def img_to_discrete_tensor(img, states):
-    tensor = tf.reduce_sum(tf.convert_to_tensor(img, dtype=tf.float32), axis=-1)
-    return tf.math.floormod(tensor, tf.ones_like(tensor) * states)
-
-arguments = parse_arguments()
-print(arguments)
-
-GT_IMG_PATH = arguments.image
-date_time = datetime.now().strftime("%m_%d_%Y")
-gt_img = Image.open(GT_IMG_PATH)
-
-
-height,width = gt_img.size
-gt_tf = img_to_discrete_tensor(gt_img.convert("RGB"),arguments.states)
-model_name = "{}+{}+{}+channels_{}+iters_{}+states_{}+train_interval_{}+pop_size_{}".format(
-    date_time,
-    "shade",
-    GT_IMG_PATH.split('/')[-1].split('.')[0], #gt_img name
-    arguments.channels,
-    arguments.iters,
-    arguments.states,
-    arguments.train_interval,
-    arguments.pop_size,
-)
-
-ca = output_modulo_model.CA(channel_n=arguments.channels,model_name=model_name,states=arguments.states)
-CHECKPOINT_PATH = arguments.folder+ca.model_name
-RUN_NUM = arguments.run
-    
-def grayscale_to_rgb(grayscale_image):
-    c_list = [(random.randint(0, 255),
-                      random.randint(0, 255),
-                      random.randint(0, 255))
-                     for _ in range(arguments.states+1)]
-  # Create a new image with the same size as the original but in RGB mode
-    rgb_image = Image.new("RGB", grayscale_image.size)
-  
-  # Iterate through each pixel in the image
-    for x in range(grayscale_image.width):
-        for y in range(grayscale_image.height):
-          # Get the grayscale pixel value at (x, y)
-            grayscale_value = grayscale_image.getpixel((x, y))
-          
-          # Map the grayscale value to an RGB value
-          # For simplicity, let's set R, G, and B to the grayscale value
-            rgb_value = c_list[grayscale_value]
-          
-          # Set the RGB value at (x, y) in the new image
-            rgb_image.putpixel((x, y), rgb_value)
-    
-    return rgb_image    
-
-def make_gif(name,frames):
-  frame_one = frames[0]
-  frame_one.save(name+".gif", format="GIF", append_images=frames,
-            save_all=True, duration=100, loop=0)
-
-def custom_mse(x, gt):
-    l_x = utils.match_last_channel(x,gt)
-    return tf.reduce_sum(tf.square(l_x - gt))
-
-def cnt_loss(img,batch):
-  l_x = utils.match_last_channel(batch,img)
-  
-  img = tf.cast(img,dtype=tf.float32)
-
-  diff = (l_x - img)
-  diff_cnt = tf.math.count_nonzero(diff)
-
-  return diff_cnt
-
-tf_weights = de.extract_weights_as_tensors(ca)
-
-lowest_loss = sys.maxsize
-lowest_loss_iter = None
-lowest_loss_individual = None
 
 @tf.function
 def evaluate_individual(gt_tf, ca, width, height, channel_n, train_interval):
@@ -119,13 +35,10 @@ def evaluate_individual(gt_tf, ca, width, height, channel_n, train_interval):
     total_iterations = tf.random.uniform([], train_interval[0], train_interval[1], tf.int32)
     
     loss = tf.constant(0, dtype=tf.int64)
-    for i in range(total_iterations):
+    for _ in range(total_iterations):
         x = ca(x)
-        #if i == total_iterations - 2:
-        #    loss = cnt_loss(gt_tf, x)
-    
-    #loss += cnt_loss(gt_tf, x)
-    loss = custom_mse(x,gt_tf)
+
+    loss = utils.custom_l2(x,gt_tf)
     return loss
 
 def objective_func(c):
@@ -144,26 +57,81 @@ def objective_func(c):
     print(f'objective_func() exection took {end-start}s')
     return nn_scores    
 
-def handle_nan_value(new_val):
-    if tf.math.is_nan(new_val):
-        exit()
-        return tf.constant(0.5)
-    return new_val
+
+def save_best_solution():
+    if not RUN_NUM:
+        save_path = CHECKPOINT_PATH
+    else:
+        run = (j * 8000) + RUN_NUM
+        run_path = 'run_'+str(run)
+        save_path = CHECKPOINT_PATH+'/'+ run_path
+    weight_save_format = str(lowest_loss_iter)+'_'+"{:.2f}".format(lowest_loss)
+
+    ca.set_weights(de.unflatten_tensor(lowest_loss_individual,shapes))
+    ca.save_weights(save_path+'/'+weight_save_format)
+    ca.save(save_path+'/'+weight_save_format+'.keras')
+    
+    np_min_losses = np.array(min_losses)
+    np.save(save_path+'/convergence_arr.npy', np_min_losses)
+    
+    plt.plot(np_min_losses)
+    plt.title(f'Loss function at the end of algorithm')
+    plt.xlabel('Iteration')
+    plt.ylabel('L2 loss')
+    plt.savefig(f'{save_path}/loss.png')
+    
+    frames = []
+    c_dict = utils.extract_color_dict(gt_img,gt_tf)
+    x = utils.init_batch(1,width,height,arguments.channels)
+    for _ in range(arguments.train_interval[1]):
+        x = ca(x)
+        f = tf.math.floormod(x,tf.ones_like(x,dtype=tf.float32)*arguments.states)
+        f = tf.math.round(f)[0][:,:,0]
+        f = Image.fromarray(np.uint8(f.numpy()),mode="L")
+        frames.append(utils.grayscale_to_rgb(f,c_dict))
+    utils.make_gif(save_path+'/'+weight_save_format,frames)
+
+arguments = parse_arguments()
+print("Printing arugments:")
+print(arguments)
+
+GT_IMG_PATH = arguments.image
+date_time = datetime.now().strftime("%m_%d_%Y")
+gt_img = Image.open(GT_IMG_PATH)
+
+height,width = gt_img.size
+gt_tf = utils.img_to_discrete_tensor(gt_img.convert("RGB"),arguments.states)
+
+model_name = "{}+shade+states_{}+channels_{}+train_interval_{}+iters_{}+pop_size_{}+operator_{}+{}".format(
+    date_time,
+    arguments.states,
+    arguments.channels,
+    arguments.train_interval,
+    arguments.iters,
+    arguments.pop_size,
+    arguments.cross_operator,
+    GT_IMG_PATH.split('/')[-1].split('.')[0], #gt_img name
+)
+ca = output_modulo_model.CA(GT_IMG_PATH, channel_n=arguments.channels,model_name=model_name,states=arguments.states)
+CHECKPOINT_PATH = arguments.folder+ca.model_name
+RUN_NUM = arguments.run
+
+lowest_loss = sys.maxsize
+lowest_loss_iter = None
+lowest_loss_individual = None
 
 print('Starting algorithm')
 
-og_weights = ca.get_weights()
+tf_weights = de.extract_weights_as_tensors(ca)
 flat,shapes = de.flatten_tensor(tf_weights)
 
 old_pop = de.generate_pop(flat,arguments.pop_size, arguments.std_dev)
 old_pop_rating = objective_func(old_pop)
 
-A = 1.0
-
 min_losses = []
 archive = de.Archive(arguments.archive_len)
 
-for j in range(4):
+for j in range(arguments.repetion_per_run):
     for i in range(arguments.iters):
         iter_start = timer()
         
@@ -195,34 +163,12 @@ for j in range(4):
         
         if min_value < lowest_loss:
             lowest_loss = min_value
+            lowest_loss_iter = i
+            lowest_loss_individual = old_pop[rating_list.index(min_value)]
             print(f'new lowest loss found {lowest_loss}')
         
         iter_end = timer()
         print(f'iteration execution took {iter_end-iter_start}s') 
         print('Iteration {}/{}. Lowest loss: {}. Current pop lowest loss {}. Archive sttus={}'.format(i,arguments.iters,lowest_loss,min_value,str(archive)))
     
-    if not RUN_NUM:
-        path = CHECKPOINT_PATH + '+seed_'+str(arguments.seed)
-        save_path = path
-    else:
-        run = (j * 8000) + RUN_NUM
-        run_path = 'run_'+str(run)+'+seed_'+str(arguments.seed)
-        save_path = CHECKPOINT_PATH+'/'+ run_path
-    weight_save_format = str(lowest_loss_iter)+'_'+"{:.2f}".format(lowest_loss)
-
-    ca.set_weights(de.unflatten_tensor(lowest_loss_individual,shapes))
-    ca.save_weights(save_path+'/'+weight_save_format)
-
-    np_min_losses = np.array(min_losses)
-    np.save(save_path+'/convergence_arr.npy', np_min_losses)
-    frames = []
-    x = utils.init_batch(1,width,height,arguments.channels)
-    for _ in range(arguments.train_interval[1]):
-        x = ca(x)
-        f = tf.math.floormod(x,tf.ones_like(x,dtype=tf.float32)*arguments.states)
-        f = tf.math.round(f)[0][:,:,0]
-        f = Image.fromarray(np.uint8(f.numpy()),mode="L")
-        frames.append(grayscale_to_rgb(f))
-    make_gif(save_path+'/'+weight_save_format,frames)
-    
-        
+    save_best_solution()
