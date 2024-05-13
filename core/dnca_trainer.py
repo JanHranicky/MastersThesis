@@ -5,6 +5,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 import pathlib
 import random
+import os
 
 class DncaTrainer():
   def __init__(self,
@@ -50,7 +51,10 @@ class DncaTrainer():
     self.data_pool_training = data_pool_training
     if self.data_pool_training:
       self.dp = data_pool.DataPool(self.width,self.height,self.model.channel_n) 
-      
+    
+    if os.name == 'nt':
+        self.gt_img_name = self.gt_img_name.split('\\')[-1]
+    
     self.checkpoint_path = f'{folder}{self.model.model_name}+{self.gt_img_name}'
     if run:
         run_path = 'run_'+str(run)
