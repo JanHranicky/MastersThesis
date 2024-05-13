@@ -87,4 +87,4 @@ $ python visualizer.py
 
 The GUI app is shown on the image below
 
-![alt text](./doc_img/logo.png "Title")
+![alt text](./doc_img/logo.png "GUI of the visualizer app")
