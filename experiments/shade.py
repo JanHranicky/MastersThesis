@@ -8,6 +8,7 @@ import random
 import sys 
 import argparse
 from timeit import default_timer as timer
+from matplotlib import pyplot as plt
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Trains neural network using differential evolution')
@@ -72,6 +73,12 @@ def save_best_solution():
     
     np_min_losses = np.array(min_losses)
     np.save(save_path+'/convergence_arr.npy', np_min_losses)
+    
+    plt.plot(np_min_losses)
+    plt.title(f'Loss function at the end of algorithm')
+    plt.xlabel('Iteration')
+    plt.ylabel('L2 loss')
+    plt.savefig(f'{save_path}/loss.png')
     
     frames = []
     c_dict = utils.extract_color_dict(gt_img,gt_tf)

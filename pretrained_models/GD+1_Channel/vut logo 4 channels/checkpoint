@@ -1,0 +1,2 @@
+model_checkpoint_path: "vut_logo_50x50"
+all_model_checkpoint_paths: "vut_logo_50x50"

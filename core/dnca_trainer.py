@@ -97,7 +97,7 @@ class DncaTrainer():
       
       if loss.numpy() == 0:
         self.save_progress(i,loss_values,True)
-        self.generate_gif(self.save_iters,width,height,last_iter,True)
+        self.generate_gif(self.save_iters,width,height,last_iter,result=True)
         exit()
           
       loss_val = np.log10(loss.numpy())

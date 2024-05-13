@@ -1,0 +1,2 @@
+model_checkpoint_path: "prince_30x30"
+all_model_checkpoint_paths: "prince_30x30"

@@ -1,10 +1,7 @@
 from core import utils,output_modulo_model,dnca_trainer
-import tensorflow as tf
 from PIL import Image
-import os
 from datetime import datetime
 import argparse
-import numpy as np
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Trains neural network as discrete neural cellular automaton using Gradient descent')
@@ -19,6 +16,9 @@ def parse_arguments():
     parser.add_argument('-f', '--folder', type=str, help='Folder in which the reults will be stored', default='./checkpoints/GD/')
     parser.add_argument('-g', '--full_range', type=bool, help='If set to true will validate all RGB channels of the image', default=False)
     parser.add_argument('-l', '--lr', type=float, help='Learning rate of the model', default=0.001)
+    
+    parser.add_argument('-w', '--save_iters', type=float, help='Number of iterations after which the model will be saved', default=50000)
+    parser.add_argument('-v', '--gif_iters', type=float, help='Number of iterations after which gif will be generated', default=50000)
 
     return parser.parse_args()
       
@@ -35,7 +35,7 @@ if __name__ == '__main__':
     arguments.train_interval,
     arguments.full_range
   )
-  ca = output_modulo_model.CA(arguments.image,channel_n=arguments.channels,model_name=model_name,states=arguments.states)
+  ca = output_modulo_model.CA(arguments.image,channel_n=arguments.channels,model_name=model_name,states=arguments.states,full_range=arguments.full_range)  
   loss_f = utils.custom_mse
 
   t = dnca_trainer.DncaTrainer(
@@ -44,9 +44,9 @@ if __name__ == '__main__':
                   gt_img.convert("RGB"),
                   gt_img.filename.split('/')[-1].split('.')[0],
                   state_num=arguments.states,
-                  generate_gif_iters=1000,
+                  generate_gif_iters=arguments.gif_iters,
                   data_pool_training=True,
-                  save_iters=1000,
+                  save_iters=arguments.save_iters,
                   lr=arguments.lr,
                   train_step_interval=arguments.train_interval,
                   run=arguments.run,

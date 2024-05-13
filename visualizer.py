@@ -6,6 +6,8 @@ import keras
 import tensorflow as tf 
 from PIL import Image
 import numpy as np
+import matplotlib.pyplot as plt
+import sys
 
 _BUTTONS_DISABLED = True
 
@@ -43,15 +45,18 @@ def load_image(display, file_name=None):
             return
     try:
         print(f"Trying to load image: {file_name}")
-        image_data = Image.open(file_name)
+        image_data = Image.open(file_name).convert("RGB")
             
         height, width = image_data.size
         display.set_image(width, height)
         
-        if display.model and display.model.channel_n < 3:
+        if display.model and not display.model.full_range or display.model.channel_n < 3:
             display.gt_tf = utils.img_to_discrete_tensor(image_data,display.model.states)
             display.color_dict = utils.extract_color_dict(image_data,display.gt_tf)
-        
+            #display.color_dict = utils.color_dict(file_name.split('/')[-1].split('.')[0])
+            
+            print(f"initialized to {display.color_dict}")
+
         print(f"Successfully loaded the image.\n")
     except Exception as e:  
         print(f"Failed to load image {file_name}. Encountered exception: {e}\n")
@@ -68,7 +73,9 @@ def disable_buttons(buttons):
     global _BUTTONS_DISABLED
     _BUTTONS_DISABLED = True
 
+i = 0
 def model_step(display):
+    global i
     if display.model_input is None:
         x = utils.init_batch(1, display.x, display.y, display.model.channel_n)
     else:
@@ -76,13 +83,14 @@ def model_step(display):
         
     x = display.model(x)
     display.model_input = x
-    
-    if display.model.channel_n < 3:
+    if not display.model.full_range or display.model.channel_n < 3:
         f = Image.fromarray(np.uint8(x[0][:,:,0].numpy()),mode="L")
         display_img = utils.grayscale_to_rgb(f,display.color_dict)
+        if i == 20:
+            display_img.save('visualize_color.png')
     else:
         display_img = utils.tf2pil(x[0].numpy())
-        
+    i += 1
     display.forward(display_img)
 
 def tksleep(t):
@@ -148,8 +156,8 @@ def main():
     load_model_button = create_button("Load Model", lambda: load_model(d, [previous_button, next_button, play_button, reset_button]))
     load_model_button.grid(row=0, column=0)
 
-    load_img_button = create_button("Load Image", lambda: load_image(d))
-    load_img_button.grid(row=0, column=1)
+    #load_img_button = create_button("Load Image", lambda: load_image(d))
+    #load_img_button.grid(row=0, column=1)
     
     space_1 = tk.Label(btn_grp, text="   ")
     space_1.grid(row=0, column=2)

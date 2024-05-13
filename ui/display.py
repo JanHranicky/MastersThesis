@@ -48,6 +48,7 @@ class Display():
         self.display_seed_tensor()
         
     def set_model(self,m):
+        self.reset()
         self.model = m
 
     def rgb_to_hex(sekf,r,g,b):
@@ -65,6 +66,7 @@ class Display():
         print(f'[x,y]=[{x},{y}]')
         print(f"Clicked on pixel ({pixel_x}, {pixel_y})")
         print(f'color of clicked = {self.canvas.itemcget(self.canvas_grid[pixel_x][pixel_y], "fill")}')
+        print('RGB =', tuple(int(self.canvas.itemcget(self.canvas_grid[pixel_x][pixel_y], "fill").lstrip('#')[i:i+2], 16) for i in (0, 2, 4)))
     def init_canvas_grid(self,width,height):
         if self.canvas is not None:
              #self.canvas.pack_forget() #remove old canvas before creating new one
