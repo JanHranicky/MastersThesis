@@ -1,2 +1,2 @@
-model_checkpoint_path: "flag_of_france_30x20"
-all_model_checkpoint_paths: "flag_of_france_30x20"
+model_checkpoint_path: "result_0_steps"
+all_model_checkpoint_paths: "result_0_steps"
