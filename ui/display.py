@@ -1,7 +1,5 @@
 import tkinter as tk
-import numpy as np
 from core import utils
-from PIL import Image
 class Display():
     DEFAULT_SIZE = 30
     

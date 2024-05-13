@@ -1,6 +1,5 @@
 import tkinter as tk
 import sys
-from io import StringIO
 
 class RedirectedOutput:
     def __init__(self, textbox):

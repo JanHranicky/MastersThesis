@@ -2,8 +2,6 @@ import tensorflow as tf
 from PIL import Image
 import numpy as np
 from matplotlib import pyplot as plt
-from tensorflow import keras
-import os
 import random
 import argparse
 

@@ -3,11 +3,8 @@ from tkinter import filedialog as fd
 from ui import display, output
 from core import utils
 import keras
-import tensorflow as tf 
 from PIL import Image
 import numpy as np
-import matplotlib.pyplot as plt
-import sys
 
 _BUTTONS_DISABLED = True
 
@@ -73,9 +70,7 @@ def disable_buttons(buttons):
     global _BUTTONS_DISABLED
     _BUTTONS_DISABLED = True
 
-i = 0
 def model_step(display):
-    global i
     if display.model_input is None:
         x = utils.init_batch(1, display.x, display.y, display.model.channel_n)
     else:
@@ -86,11 +81,8 @@ def model_step(display):
     if not display.model.full_range or display.model.channel_n < 3:
         f = Image.fromarray(np.uint8(x[0][:,:,0].numpy()),mode="L")
         display_img = utils.grayscale_to_rgb(f,display.color_dict)
-        if i == 20:
-            display_img.save('visualize_color.png')
     else:
         display_img = utils.tf2pil(x[0].numpy())
-    i += 1
     display.forward(display_img)
 
 def tksleep(t):

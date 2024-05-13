@@ -1,8 +1,5 @@
 import os
 import numpy as np
-import matplotlib.pyplot as plt
-import argparse
-
 
 def iterate_directory(root_dir,process_func,dict):
     for root, dirs, files in os.walk(root_dir):

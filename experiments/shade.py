@@ -4,7 +4,6 @@ import numpy as np
 from PIL import Image
 import numpy as np 
 from datetime import datetime
-import random
 import sys 
 import argparse
 from timeit import default_timer as timer

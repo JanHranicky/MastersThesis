@@ -121,8 +121,7 @@ class DncaTrainer():
   def save_progress(self,i,loss_values,result=False,final_iteration=False):
     if i%self.save_iters == 0 or result or final_iteration:
       safe_name = str(i) if not result else "result_"+str(i)+"_steps"
-      #safe_name += ".weights.h5"
-      self.model.save_weights(self.checkpoint_path+'/'+safe_name)
+      self.model.save_weights(self.checkpoint_path+'/'+safe_name+".weights.h5")
       self.model.save(self.checkpoint_path+'/'+safe_name+'.keras')
 
       np.save(self.checkpoint_path+'/convergence_arr.npy', loss_values)
