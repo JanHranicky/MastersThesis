@@ -1,6 +1,6 @@
 # Thesis
 
-Master's thesis project implementation. Set of experiment regarding based [growing cellular automata model](https://distill.pub/2020/growing-ca/). The repositary contains source code for newly created model of dicrete neural cellular automata (DNCA)
+Master's thesis project implementation. Set of experiment regarding based [growing cellular automata model](https://distill.pub/2020/growing-ca/). The repositary contains source code for newly created model of dicrete neural cellular automata (DNCA). Results of the thesis can be seen on [this](https://www.stud.fit.vutbr.cz/~xhrani02/DP/index.html) site.
 
 # Instalation
 
